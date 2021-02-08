@@ -1,3 +1,4 @@
+import os
 from datetime import timedelta
 
 from dotenv import load_dotenv
@@ -29,6 +30,7 @@ class Study():
         engine = utilities.get_engine()
         self.sqlalchemy_session = sessionmaker(bind=engine)()
         self.redis_client = utilities.get_redis_client()
+        self.role_name_to_obj = utilities.config[("test_" if os.getenv("mode") == "test" else "") + "study_roles"]
 
     def getUserStats(self, id):
         """
@@ -39,11 +41,11 @@ class Study():
         user_sql_obj = (
             self.sqlalchemy_session.query(User).filter(User.id == id).first()
         )
-        stats = utilities.get_user_stats(
+        stats = utilities.get_time_interval_user_stats(
             self.redis_client, id, timepoint=timepoint
         )
         stats["average_per_day"] = utilities.round_num(
-            stats[rank_categories["monthly"]]["study_time"]
+            stats["pastMonth"]["study_time"]
             / utilities.get_num_days_this_month()
         )
 
@@ -52,8 +54,55 @@ class Study():
 
         return stats
 
-    def getUserTimeSeries(self, id, timeinterval):
-        return utilities.get_user_timeseries(self.redis_client, id, timeinterval)
+    def getUserRoleInfo(self, id):
+        user_id = id
+        rank_categories = utilities.get_rank_categories()
+
+        hours_cur_month = utilities.get_redis_score(self.redis_client, rank_categories["monthly"], user_id)
+        if not hours_cur_month:
+            hours_cur_month = 0
+
+        role, next_role, time_to_next_role = utilities.get_role_status(self.role_name_to_obj, hours_cur_month)
+
+        return {
+            'role': role,
+            'next_role': next_role,
+            'time_to_next_role': time_to_next_role
+        }
+
+    def get_neighbor_stats(self, sorted_set_name, user_id):
+        rank = utilities.get_redis_rank(self.redis_client, sorted_set_name, user_id)
+        rank -= 1  # Use 0 index
+        id_with_score = self.get_info_from_leaderboard(sorted_set_name, rank - 5, rank + 5)
+
+        return id_with_score
+
+    def get_info_from_leaderboard(self, sorted_set_name, start=0, end=-1):
+        if start < 0:
+            start = 0
+
+        id_li = [int(i) for i in self.redis_client.zrevrange(sorted_set_name, start, end)]
+        id_with_score = []
+
+        for neighbor_id in id_li:
+            res = dict()
+            res["discord_user_id"] = neighbor_id
+            res["rank"] = utilities.get_redis_rank(self.redis_client, sorted_set_name, neighbor_id)
+            res["study_time"] = utilities.get_redis_score(self.redis_client, sorted_set_name, neighbor_id)
+            id_with_score.append(res)
+
+        return id_with_score
+
+
+    def getUserTimeSeries(self, id, time_interval):
+        timeseries = utilities.get_user_timeseries(self.redis_client, id, time_interval)
+        timepoint = utilities.time_interval_to_timepoint(time_interval)
+        neighbors = self.get_neighbor_stats(timepoint, id)
+
+        return {
+            'neighbors': neighbors,
+            'timeseries': timeseries
+        }
 
     def getLeaderboard(self, offset, limit, timepoint):
         start = offset
@@ -92,7 +141,12 @@ class Leaderboard(Resource):
 
 class UserStats(Resource):
     def get(self, user_id):
-        return study.getUserStats(user_id)
+        stats = study.getUserStats(user_id)
+        roleInfo = study.getUserRoleInfo(user_id)
+        return {
+            'stats': stats,
+            'roleInfo': roleInfo
+        }
 
 class UserTimeSeries(Resource):
     def get(self, user_id):

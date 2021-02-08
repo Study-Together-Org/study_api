@@ -437,6 +437,32 @@ def get_user_stats(
 
     return stats
 
+def get_time_interval_user_stats(
+    redis_client, user_id, timepoint=get_earliest_timepoint(string=True, prefix=True)
+):
+    stats = dict()
+    category_key_names = list(get_rank_categories().values())
+
+    for sorted_set_name in [timepoint] + category_key_names[1:]:
+        stats[get_time_interval_from_timepoint(sorted_set_name)] = {
+            "rank": get_redis_rank(redis_client, sorted_set_name, user_id),
+            "study_time": get_redis_score(redis_client, sorted_set_name, user_id),
+        }
+
+    return stats
+
+def get_time_interval_from_timepoint(timepoint):
+    if "daily" in timepoint:
+        return "pastDay"
+    elif "weekly" in timepoint:
+        return "pastWeek"
+    elif "monthly" in timepoint:
+        return "pastMonth"
+    elif "all_time" in timepoint:
+        return "all_time"
+    else:
+        return "error"
+
 def get_user_timeseries(redis_client, user_id, time_interval):
 
     time_interval_to_span = {
@@ -454,7 +480,7 @@ def get_user_timeseries(redis_client, user_id, time_interval):
 
 
     for sorted_set_name in timepoints:
-        timeseries[sorted_set_name] = {
+        timeseries[sorted_set_name[6:]] = {
             "rank": get_redis_rank(redis_client, sorted_set_name, user_id),
             "study_time": get_redis_score(redis_client, sorted_set_name, user_id),
         }
