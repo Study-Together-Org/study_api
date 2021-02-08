@@ -76,7 +76,7 @@ There are three main queries:
 
 Returns leaderboard information on a time interval. 
 
-Takes params for offset, limit, and time_interval.
+Takes params for offset, limit, and time_interval. Time interval must be one of "pastDay", "pastWeek", "pastMonth", "allTime".
 
 Example call: 
 ```
@@ -178,7 +178,7 @@ Example response:
 
 Returns time series data about a users study hours, and a list of neighbors.
 
-Takes url args for user_id, and params for time_interval.
+Takes url args for user_id, and params for time_interval. Time interval must be one of "pastDay", "pastWeek", "pastMonth", "allTime".
 
 Example call:
 ```
