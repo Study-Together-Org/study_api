@@ -1,0 +1,25 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+flask = "*"
+flask-restful = "*"
+importmagic = "*"
+epc = "*"
+pylint = "*"
+sqlalchemy = "*"
+python-dotenv = "*"
+dateparser = "*"
+hjson = "*"
+redis = "*"
+faker = "*"
+pymysql = "*"
+pandas = "*"
+numpy = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.9"
