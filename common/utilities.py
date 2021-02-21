@@ -204,19 +204,19 @@ def timedelta_to_hours(td):
 
 # def get_user_timeinfo(user, timepoint):
 #     from timezone_bot import query_zone
-# 
+#
 #     user_timezone = await query_zone(user)
-# 
+#
 #     zone_obj = ZoneInfo(user_timezone)
 #     # Here the placeholder is not limited to "-"
 #     user_timepoint = parse_time(timepoint, zone_obj=zone_obj)
-# 
+#
 #     if user_timepoint:
 #         user_timepoint = user_timepoint.replace(tzinfo=zone_obj)
 #         std_zone_obj = ZoneInfo(config["business"]["timezone"])
 #         utc_timepoint = user_timepoint.astimezone(std_zone_obj)
 #         cur_timepoint = get_time().replace(tzinfo=std_zone_obj)
-# 
+#
 #         if utc_timepoint > cur_timepoint or utc_timepoint < (
 #             cur_timepoint - timedelta(days=1)
 #         ):
@@ -230,14 +230,14 @@ def timedelta_to_hours(td):
 #             )
 #     else:
 #         timepoint = get_closest_timepoint(get_earliest_timepoint(), prefix=False)
-# 
+#
 #     display_timepoint = dateparser.parse(timepoint).replace(
 #         tzinfo=ZoneInfo(config["business"]["timezone"])
 #     )
 #     display_timepoint = display_timepoint.astimezone(zone_obj).strftime(
 #         os.getenv("datetime_format").split(".")[0]
 #     )
-# 
+#
 #     return "daily_" + timepoint, user_timezone, display_timepoint
 
 
@@ -393,17 +393,17 @@ def get_last_time(line):
 # def kill_last_process(line):
 #     if not line:
 #         return
-# 
+#
 #     parts = line.split()
 #     pid = int(parts[-1].split(":")[-1])
-# 
+#
 #     try:
 #         process = psutil.Process(pid)
-# 
+#
 #         if "time_counter.py" in " ".join(process.cmdline()):
 #             process.terminate()
 #             print(f"{pid} killed")
-# 
+#
 #     except:
 #         pass
 
@@ -423,6 +423,14 @@ def get_redis_score(redis_client, sorted_set_name, user_id):
     return round_num(score)
 
 
+def get_username_from_user_id(redis_client, user_id):
+    return redis_client.hget("user_id_to_username", user_id)
+
+
+def get_user_id_from_username(redis_client, username):
+    return redis_client.hget("username_to_user_id", username)
+
+
 def get_user_stats(
     redis_client, user_id, timepoint=get_earliest_timepoint(string=True, prefix=True)
 ):
@@ -436,6 +444,7 @@ def get_user_stats(
         }
 
     return stats
+
 
 def get_time_interval_user_stats(
     redis_client, user_id, timepoint=get_earliest_timepoint(string=True, prefix=True)
@@ -451,6 +460,7 @@ def get_time_interval_user_stats(
 
     return stats
 
+
 def get_time_interval_from_timepoint(timepoint):
     if "daily" in timepoint:
         return "pastDay"
@@ -463,36 +473,42 @@ def get_time_interval_from_timepoint(timepoint):
     else:
         return "error"
 
+
 def get_user_timeseries(redis_client, user_id, time_interval):
 
     time_interval_to_span = {
-        'pastDay': 1,
-        'pastWeek': 7,
-        'pastMonth': 30,
-        'allTime': 60
+        "pastDay": 1,
+        "pastWeek": 7,
+        "pastMonth": 30,
+        "allTime": 60,
     }
 
     span = time_interval_to_span[time_interval]
 
-    timeseries = dict()
     timepoint = get_day_start()
-    timepoints = ["daily_" + str(timepoint - i * timedelta(days=1)) for i in range(span)]
+    timepoints = [
+        "daily_" + str(timepoint - i * timedelta(days=1)) for i in range(span)
+    ]
 
-
+    timeseries = []
     for sorted_set_name in timepoints:
-        timeseries[sorted_set_name[6:]] = {
-            "rank": get_redis_rank(redis_client, sorted_set_name, user_id),
-            "study_time": get_redis_score(redis_client, sorted_set_name, user_id),
-        }
+        timeseries.append(
+            {
+                "date": sorted_set_name[6:-9],
+                "rank": get_redis_rank(redis_client, sorted_set_name, user_id),
+                "study_time": get_redis_score(redis_client, sorted_set_name, user_id),
+            }
+        )
 
     return timeseries
 
+
 def time_interval_to_timepoint(time_interval):
     return {
-        'pastDay': f"daily_{get_day_start()}",
-        'pastWeek': f"weekly_{get_week_start()}",
-        'pastMonth': f"monthly_{get_month()}",
-        'allTime': 'all_time'
+        "pastDay": f"daily_{get_day_start()}",
+        "pastWeek": f"weekly_{get_week_start()}",
+        "pastMonth": f"monthly_{get_month()}",
+        "allTime": "all_time",
     }[time_interval]
 
 
