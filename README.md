@@ -17,8 +17,6 @@ Create a studytogether database:
 ```mysql
 # create studytogether database
 CREATE DATABASE studytogether
-# add user with permissions to access studytogether db.
-GRANT ALL PRIVILEGES on studytogether.* TO 'study_together'@'localhost';
 ```
 
 Create a user with access to the studytogether database:
@@ -70,7 +68,32 @@ MariaDB> SELECT * FROM user LIMIT 10;
 
 # Usage
 
-There are three main queries:
+There are four main queries:
+
+## users
+
+Return a list of matching users and their userids.
+
+Takes a param for match. The list of users will be searched by the glob `f"*{match}*"`.
+
+Example call:
+
+```
+http://localhost:5000/users?match=hi
+```
+
+Example response:
+
+```
+{
+    "phixltkpvm": "215270539886472525",
+    "hizxfwuhhw": "593950567587474809",
+    "znyxihipjl": "675574458552210453",
+    "pbyvmwwphi": "714168395175613125",
+    "sghlchiemd": "948247212994799808"
+}
+```
+
 
 ## leaderboard
 
@@ -89,31 +112,37 @@ Example response:
 [
     {
         "discord_user_id": 754118016803749048,
+        "username": "yvniooxeuk",
         "rank": 1,
         "study_time": 70.0
     },
     {
         "discord_user_id": 927698802236956910,
+        "username": "esqqbzrlrh",
         "rank": 2,
         "study_time": 68.0
     },
     {
         "discord_user_id": 290378422076173744,
+        "username": "olbtvlinkv",
         "rank": 3,
         "study_time": 68.0
     },
     {
         "discord_user_id": 173816835082273743,
+        "username": "oswcsocdcf",
         "rank": 4,
         "study_time": 68.0
     },
     {
         "discord_user_id": 863085665046287668,
+        "username": "vrltvwdppx",
         "rank": 5,
         "study_time": 67.0
     },
     {
         "discord_user_id": 738628035617842786,
+        "username": "xaedunnmzp",
         "rank": 6,
         "study_time": 67.0
     }
@@ -135,41 +164,42 @@ Example response:
 
 ```
 {
+    "username": "bluzoosqbm",
     "stats": {
         "pastDay": {
-            "rank": 100,
-            "study_time": 6.0
+            "rank": 61,
+            "study_time": 7.0
         },
         "pastWeek": {
-            "rank": 101,
-            "study_time": 35.0
+            "rank": 25,
+            "study_time": 61.0
         },
         "pastMonth": {
-            "rank": 94,
-            "study_time": 154.0
+            "rank": 185,
+            "study_time": 39.0
         },
         "all_time": {
-            "rank": 94,
-            "study_time": 154.0
+            "rank": 185,
+            "study_time": 39.0
         },
-        "average_per_day": 19.25,
-        "currentStreak": 2,
-        "longestStreak": 4
+        "average_per_day": 1.857,
+        "currentStreak": 1,
+        "longestStreak": 1
     },
     "roleInfo": {
         "role": {
-            "hours": "120-160",
-            "id": 672197498323861532,
-            "name": "grandmaster (120-160h)",
-            "mention": "<@&792781265547821087>"
+            "hours": "20-40",
+            "id": 666302147176169502,
+            "name": "advanced (20-40h)",
+            "mention": "<@&792781265542971409>"
         },
         "next_role": {
-            "hours": "160-220",
-            "id": 674297907150716959,
-            "name": "study-machine (160-220h)",
-            "mention": "<@&792781265547821088>"
+            "hours": "40-60",
+            "id": 666302227484508170,
+            "name": "expert (40-60h)",
+            "mention": "<@&792781265542971410>"
         },
-        "time_to_next_role": 6.0
+        "time_to_next_role": 1.0
     }
 }
 ```
@@ -188,91 +218,109 @@ http://localhost:5000/usertimeseries/102484975215862243?time_interval=pastWeek
 Example response:
 ```
 {
-    "timeseries": {
-        "2021-02-07 17:00:00": {
-            "rank": 100,
-            "study_time": 6.0
+    "timeseries": [
+        {
+            "date": "2021-02-21",
+            "rank": 61,
+            "study_time": 7.0
         },
-        "2021-02-06 17:00:00": {
-            "rank": 177,
-            "study_time": 2.0
+        {
+            "date": "2021-02-20",
+            "rank": 52,
+            "study_time": 7.0
         },
-        "2021-02-05 17:00:00": {
-            "rank": 17,
-            "study_time": 10.0
+        {
+            "date": "2021-02-19",
+            "rank": 96,
+            "study_time": 5.0
         },
-        "2021-02-04 17:00:00": {
-            "rank": 145,
+        {
+            "date": "2021-02-18",
+            "rank": 123,
             "study_time": 4.0
         },
-        "2021-02-03 17:00:00": {
-            "rank": 210,
-            "study_time": 0
+        {
+            "date": "2021-02-17",
+            "rank": 29,
+            "study_time": 9.0
         },
-        "2021-02-02 17:00:00": {
-            "rank": 170,
-            "study_time": 2.0
+        {
+            "date": "2021-02-16",
+            "rank": 43,
+            "study_time": 8.0
         },
-        "2021-02-01 17:00:00": {
-            "rank": 200,
-            "study_time": 1.0
+        {
+            "date": "2021-02-15",
+            "rank": 128,
+            "study_time": 4.0
         }
-    },
+    ],
     "neighbors": [
         {
-            "discord_user_id": 932515466658138060,
-            "rank": 96,
-            "study_time": 35.0
+            "discord_user_id": 518488332978841649,
+            "username": "hzpgidkuwc",
+            "rank": 20,
+            "study_time": 63.0
         },
         {
-            "discord_user_id": 862384702718551449,
-            "rank": 97,
-            "study_time": 35.0
+            "discord_user_id": 228974702591634818,
+            "username": "hgncxhevry",
+            "rank": 21,
+            "study_time": 63.0
         },
         {
-            "discord_user_id": 668985024610717864,
-            "rank": 98,
-            "study_time": 35.0
+            "discord_user_id": 217840426440527737,
+            "username": "jbhyqdnnyi",
+            "rank": 22,
+            "study_time": 63.0
         },
         {
-            "discord_user_id": 438382606667001577,
-            "rank": 99,
-            "study_time": 35.0
+            "discord_user_id": 562511513199020028,
+            "username": "tfluesqkql",
+            "rank": 23,
+            "study_time": 62.0
         },
         {
-            "discord_user_id": 194520434570021221,
-            "rank": 100,
-            "study_time": 35.0
+            "discord_user_id": 438011540564379889,
+            "username": "oufvdmsunn",
+            "rank": 24,
+            "study_time": 62.0
         },
         {
-            "discord_user_id": 102484975215862243,
-            "rank": 101,
-            "study_time": 35.0
+            "discord_user_id": 991287113119009422,
+            "username": "bluzoosqbm",
+            "rank": 25,
+            "study_time": 61.0
         },
         {
-            "discord_user_id": 954949519964969681,
-            "rank": 102,
-            "study_time": 34.0
+            "discord_user_id": 462229337138157709,
+            "username": "supvclaxtz",
+            "rank": 26,
+            "study_time": 61.0
         },
         {
-            "discord_user_id": 916085044000758358,
-            "rank": 103,
-            "study_time": 34.0
+            "discord_user_id": 428869972841033146,
+            "username": "joffmjarky",
+            "rank": 27,
+            "study_time": 61.0
         },
         {
-            "discord_user_id": 820922041172774422,
-            "rank": 104,
-            "study_time": 34.0
+            "discord_user_id": 737826033723676601,
+            "username": "holkgvwiit",
+            "rank": 28,
+            "study_time": 60.0
         },
         {
-            "discord_user_id": 723255456077380053,
-            "rank": 105,
-            "study_time": 34.0
+            "discord_user_id": 182321490621867435,
+            "username": "sllyuqouvf",
+            "rank": 29,
+            "study_time": 60.0
         },
         {
-            "discord_user_id": 376069723034697471,
-            "rank": 106,
-            "study_time": 34.0
+            "discord_user_id": 708366450576113731,
+            "username": "krrxgzgtqo",
+            "rank": 30,
+            "study_time": 59.0
         }
     ]
 }
