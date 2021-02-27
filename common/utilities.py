@@ -423,6 +423,9 @@ def get_redis_score(redis_client, sorted_set_name, user_id):
     return round_num(score)
 
 
+def get_number_of_users(redis_client):
+    return redis_client.hlen("user_id_to_username");
+
 def get_username_from_user_id(redis_client, user_id):
     return redis_client.hget("user_id_to_username", user_id)
 

@@ -19,8 +19,17 @@ class Study:
             ("test_" if os.getenv("mode") == "test" else "") + "study_roles"
         ]
 
+        # verify that connection to server succeeded
+        self.redis_client.ping()
+
     def get_matching_users(self, match):
-        return self.redis_client.hscan("username_to_user_id", 0, match=f"*{match}*")[1]
+        res = []
+        for username, user_id in self.redis_client.hscan(
+            "username_to_user_id", 0, match=f"*{match}*"
+        )[1].items():
+            res.append({"username": username, "user_id": user_id})
+
+        return res
 
     def get_username_from_user_id(self, id):
         return utilities.get_username_from_user_id(self.redis_client, id)
@@ -136,4 +145,9 @@ class Study:
             )
             id_with_score.append(res)
 
-        return id_with_score
+        num_users = utilities.get_number_of_users(self.redis_client)
+
+        return {
+            "leaderboard": id_with_score,
+            "num_users": num_users
+        }
