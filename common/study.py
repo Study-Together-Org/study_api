@@ -12,8 +12,8 @@ load_dotenv("dev.env")
 
 class Study:
     def __init__(self):
-        engine = utilities.get_engine()
-        self.sqlalchemy_session = sessionmaker(bind=engine)()
+        self.engine = utilities.get_engine()
+        self.sqlalchemy_session = sessionmaker(bind=self.engine)()
         self.redis_client = utilities.get_redis_client()
         self.role_name_to_obj = utilities.config[
             ("test_" if os.getenv("mode") == "test" else "") + "study_roles"
@@ -21,6 +21,11 @@ class Study:
 
         # verify that connection to server succeeded
         self.redis_client.ping()
+
+    def close(self):
+        utilities.commit_or_rollback(self.sqlalchemy_session)
+        self.sqlalchemy_session.close()
+        self.engine.dispose()
 
     def user_exists(self, discord_user_id):
         try:
