@@ -27,8 +27,8 @@ Session = sessionmaker(bind=engine)
 sqlalchemy_session = Session()
 redis_client = utilities.get_redis_client()
 
-user_size = 210
-action_size = user_size * 30 * 3 + 1
+user_size = 50000
+# action_size = user_size * 30 * 3 + 1
 
 
 def generate_user_df():
@@ -71,7 +71,7 @@ def generate_sorted_set():
 
         to_insert = dict()
         for user_id in user_id_list:
-            to_insert[user_id] = random.randint(0, 10)
+            to_insert[user_id] = random.randint(0, 16 * 10) / 10
         redis_client.zadd(sorted_set_name, to_insert)
 
     # week
@@ -84,14 +84,14 @@ def generate_sorted_set():
 
         to_insert = dict()
         for user_id in user_id_list:
-            to_insert[user_id] = random.randint(0, 70)
+            to_insert[user_id] = random.randint(0, 16 * 7 * 10) / 10
         redis_client.zadd(sorted_set_name, to_insert)
 
     # month
     month_timepoint = utilities.get_month()
     to_insert = dict()
     for user_id in user_id_list:
-        to_insert[user_id] = random.randint(0, 70 * 4)
+        to_insert[user_id] = random.randint(0, 16 * 7 * 4 * 10) / 10
     redis_client.zadd("monthly_" + str(month_timepoint), to_insert)
     redis_client.zadd("all_time", to_insert)
 

@@ -27,6 +27,9 @@ class Study:
         self.sqlalchemy_session.close()
         self.engine.dispose()
 
+    def save(self):
+        utilities.commit_or_rollback(self.sqlalchemy_session)
+
     def user_exists(self, discord_user_id):
         try:
             user_sql_obj = (
@@ -59,9 +62,14 @@ class Study:
         return a users stats from their id
         """
         timepoint = f"daily_{utilities.get_day_start()}"
-        user_sql_obj = (
-            self.sqlalchemy_session.query(User).filter(User.id == (id)).first()
-        )
+        user_sql_obj = None
+        try:
+            user_sql_obj = (
+                self.sqlalchemy_session.query(User).filter(User.id == int(id)).first()
+            )
+        except:
+            utilities.commit_or_rollback(self.sqlalchemy_session)
+
         stats = utilities.get_time_interval_user_stats(
             self.redis_client, id, timepoint=timepoint
         )
