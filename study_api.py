@@ -58,5 +58,4 @@ api.add_resource(Leaderboard, "/leaderboard")
 api.add_resource(UsernameLookup, "/users")
 
 if __name__ == "__main__":
-    app.run(debug=True, threaded=False, processes=1)
-
+    app.run(debug=True)

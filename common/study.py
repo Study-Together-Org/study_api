@@ -22,6 +22,21 @@ class Study:
         # verify that connection to server succeeded
         self.redis_client.ping()
 
+    def user_exists(self, discord_user_id):
+        try:
+            user_sql_obj = (
+                self.sqlalchemy_session.query(User)
+                .filter(User.id == int(discord_user_id))
+                .first()
+            )
+        except:
+            return False
+
+        if user_sql_obj:
+            return True
+        else:
+            return False
+
     def get_matching_users(self, match):
         res = []
         for username, user_id in self.redis_client.hscan(
@@ -39,8 +54,9 @@ class Study:
         return a users stats from their id
         """
         timepoint = f"daily_{utilities.get_day_start()}"
-        rank_categories = utilities.get_rank_categories()
-        user_sql_obj = self.sqlalchemy_session.query(User).filter(User.id == id).first()
+        user_sql_obj = (
+            self.sqlalchemy_session.query(User).filter(User.id == (id)).first()
+        )
         stats = utilities.get_time_interval_user_stats(
             self.redis_client, id, timepoint=timepoint
         )
@@ -67,6 +83,10 @@ class Study:
             self.role_name_to_obj, hours_cur_month
         )
 
+        if not next_role:
+            next_role = role
+            time_to_next_role = 0
+
         return {
             "role": role,
             "next_role": next_role,
@@ -74,7 +94,6 @@ class Study:
         }
 
     def get_neighbor_stats(self, time_interval, user_id):
-        print(time_interval)
 
         timepoint = utilities.time_interval_to_timepoint(time_interval)
         sorted_set_name = timepoint
@@ -98,7 +117,7 @@ class Study:
 
         for neighbor_id in id_li:
             res = dict()
-            res["discord_user_id"] = neighbor_id
+            res["discord_user_id"] = str(neighbor_id)
             res["username"] = utilities.get_username_from_user_id(
                 self.redis_client, neighbor_id
             )
@@ -133,7 +152,7 @@ class Study:
 
         for neighbor_id in id_list:
             res = dict()
-            res["discord_user_id"] = neighbor_id
+            res["discord_user_id"] = str(neighbor_id)
             res["username"] = utilities.get_username_from_user_id(
                 self.redis_client, neighbor_id
             )
@@ -147,7 +166,4 @@ class Study:
 
         num_users = utilities.get_number_of_users(self.redis_client)
 
-        return {
-            "leaderboard": id_with_score,
-            "num_users": num_users
-        }
+        return {"leaderboard": id_with_score, "num_users": num_users}
