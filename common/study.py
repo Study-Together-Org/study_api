@@ -46,23 +46,40 @@ class Study:
         else:
             return False
 
+    def get_username_from_user_id(self, discord_user_id):
+        user = self.sqlalchemy_session.query(User).filter(User.id == int(discord_user_id)).first()
+        return user.username
+
+
     def get_matching_users(self, match):
         res = []
-        for username, user_id in self.redis_client.hscan(
-            "username_to_user_id", 0, match=f"*{match}*"
-        )[1].items():
+        users = self.sqlalchemy_session.query(User).filter(User.username.like(f"%{match}%")).limit(15).all()
+        for user in users:
             res.append(
                 {
-                    "username": username,
-                    "discord_user_id": user_id,
-                    "tag": f"#{random.randint(0, 9999):02d}",
+                    "username": user.username,
+                    "discord_user_id": str(user.id),
+                    "tag": f"#{user.tag}",
                 }
             )
+
+        # for username, user_id in self.redis_client.hscan(
+        #     "username_to_user_id", 0, match=f"*{match}*"
+        # )[1].items():
+        #     res.append(
+        #         {
+        #             "username": username,
+        #             "discord_user_id": user_id,
+        #             "tag": f"#{random.randint(0, 9999):02d}",
+        #         }
+        #     )
+
 
         return res
 
     def get_username_from_user_id(self, id):
-        return utilities.get_username_from_user_id(self.redis_client, id)
+        user = self.sqlalchemy_session.query(User).filter(User.id == int(id)).first()
+        return user.username
 
     def get_user_stats(self, id):
         """
@@ -138,9 +155,7 @@ class Study:
         for neighbor_id in id_li:
             res = dict()
             res["discord_user_id"] = str(neighbor_id)
-            res["username"] = utilities.get_username_from_user_id(
-                self.redis_client, neighbor_id
-            )
+            res["username"] = self.get_username_from_user_id(neighbor_id)
             res["rank"] = utilities.get_redis_rank(
                 self.redis_client, sorted_set_name, neighbor_id
             )
@@ -173,9 +188,7 @@ class Study:
         for neighbor_id in id_list:
             res = dict()
             res["discord_user_id"] = str(neighbor_id)
-            res["username"] = utilities.get_username_from_user_id(
-                self.redis_client, neighbor_id
-            )
+            res["username"] = self.get_username_from_user_id(neighbor_id)
             res["rank"] = utilities.get_redis_rank(
                 self.redis_client, sorted_set_name, neighbor_id
             )

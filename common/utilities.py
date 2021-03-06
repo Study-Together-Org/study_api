@@ -1,6 +1,8 @@
 import logging
 import math
 import os
+import random
+import string
 import sys
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
@@ -278,6 +280,11 @@ def generate_random_number(size=1, length=18):
     res = [fake.random_number(digits=length, fix_len=True) for _ in range(size)]
     return res
 
+def generate_random_usernames(size=1, length=10):
+    return ["".join(random.choice(string.ascii_lowercase) for _ in range(length)) for _ in range(size)]
+
+def generate_random_tags(size=1):
+    return [f"{random.randint(0, 9999):04d}" for _ in range(size)]
 
 def generate_discord_user_id(size=1, length=18):
     res = []
@@ -426,12 +433,12 @@ def get_redis_score(redis_client, sorted_set_name, user_id):
 def get_number_of_users(redis_client):
     return redis_client.hlen("user_id_to_username");
 
-def get_username_from_user_id(redis_client, user_id):
-    return redis_client.hget("user_id_to_username", user_id)
-
-
-def get_user_id_from_username(redis_client, username):
-    return redis_client.hget("username_to_user_id", username)
+# def get_username_from_user_id(redis_client, user_id):
+#     return redis_client.hget("user_id_to_username", user_id)
+# 
+# 
+# def get_user_id_from_username(redis_client, username):
+#     return redis_client.hget("username_to_user_id", username)
 
 
 def get_user_stats(
@@ -503,7 +510,7 @@ def get_user_timeseries(redis_client, user_id, time_interval):
             }
         )
 
-    return timeseries
+    return list(reversed(timeseries))
 
 
 def time_interval_to_timepoint(time_interval):

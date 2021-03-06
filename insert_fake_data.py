@@ -34,6 +34,8 @@ user_size = 50000
 def generate_user_df():
     user_df = pd.DataFrame()
     user_df["id"] = utilities.generate_random_number(user_size)
+    user_df["username"] = utilities.generate_random_usernames(user_size)
+    user_df["tag"] = utilities.generate_random_tags(user_size)
     current_streak = [random.randint(0, 10) for _ in range(user_size)]
     user_df["current_streak"] = current_streak
     user_df["longest_streak"] = [i + random.randint(0, 5) for i in current_streak]
@@ -96,34 +98,34 @@ def generate_sorted_set():
     redis_client.zadd("all_time", to_insert)
 
 
-def generate_username_mapping():
-
-    query = sqlalchemy_session.query(User.id)
-    response = pd.read_sql(query.statement, sqlalchemy_session.bind)
-
-    # get list of user ids
-    user_id_list = response["id"].to_list()
-
-    # generate mapping from user ids to usernames
-    user_id_to_username = dict()
-    user_id_to_username.update(
-        {
-            user_id: "".join(random.choice(string.ascii_lowercase) for i in range(10))
-            for user_id in user_id_list
-        }
-    )
-
-    # generate mapping from usernames to user ids
-    username_to_user_id = dict()
-    username_to_user_id = {v: k for k, v in user_id_to_username.items()}
-
-    # save the mappings to redis
-    redis_client.hmset("user_id_to_username", user_id_to_username)
-    redis_client.hmset("username_to_user_id", username_to_user_id)
+# def generate_username_mapping():
+# 
+#     query = sqlalchemy_session.query(User.id)
+#     response = pd.read_sql(query.statement, sqlalchemy_session.bind)
+# 
+#     # get list of user ids
+#     user_id_list = response["id"].to_list()
+# 
+#     # generate mapping from user ids to usernames
+#     user_id_to_username = dict()
+#     user_id_to_username.update(
+#         {
+#             user_id: "".join(random.choice(string.ascii_lowercase) for i in range(10))
+#             for user_id in user_id_list
+#         }
+#     )
+# 
+#     # generate mapping from usernames to user ids
+#     username_to_user_id = dict()
+#     username_to_user_id = {v: k for k, v in user_id_to_username.items()}
+# 
+#     # save the mappings to redis
+#     redis_client.hmset("user_id_to_username", user_id_to_username)
+#     redis_client.hmset("username_to_user_id", username_to_user_id)
 
 
 if __name__ == "__main__":
     utilities.recreate_db(Base)
     generate_user_df()
     generate_sorted_set()
-    generate_username_mapping()
+    # generate_username_mapping()
