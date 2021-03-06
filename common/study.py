@@ -1,4 +1,5 @@
 import os
+import random
 from datetime import timedelta
 
 from dotenv import load_dotenv
@@ -50,7 +51,13 @@ class Study:
         for username, user_id in self.redis_client.hscan(
             "username_to_user_id", 0, match=f"*{match}*"
         )[1].items():
-            res.append({"username": username, "user_id": user_id})
+            res.append(
+                {
+                    "username": username,
+                    "discord_user_id": user_id,
+                    "tag": f"#{random.randint(0, 9999):02d}",
+                }
+            )
 
         return res
 
