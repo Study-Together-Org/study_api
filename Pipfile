@@ -18,6 +18,10 @@ faker = "*"
 pymysql = "*"
 pandas = "*"
 numpy = "*"
+discord = "*"
+"discord.py" = "*"
+quart = "*"
+discord-ext-ipc = "*"
 
 [dev-packages]
 
