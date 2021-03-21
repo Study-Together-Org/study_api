@@ -26,15 +26,15 @@ load_dotenv("dev.env")
 study = None
 
 
-# def connect_study():
-#     return Study()
-# 
-# 
-# def get_study():
-#     if not hasattr(g, "study"):
-#         # start thread for discord bot
-#         g.study = connect_study()
-#     return g.study
+async def connect_study():
+    return await Study.create()
+
+
+async def get_study():
+    if not hasattr(g, "study"):
+        # start thread for discord bot
+        g.study = await connect_study()
+    return g.study
 # 
 # 
 # @app.teardown_appcontext
@@ -47,7 +47,7 @@ study = None
 async def get_user_stats(user_id):
     # abort_if_user_doesnt_exist(user_id)
     # study = Study()
-    # study = get_study()
+    study = await get_study()
     stats = await study.get_user_stats(user_id)
     roleInfo = await study.get_user_role_info(user_id)
     username = await study.get_username_from_user_id(user_id)
@@ -59,7 +59,7 @@ async def get_user_stats(user_id):
 async def get_user_timeseries(user_id):
     # abort_if_user_doesnt_exist(user_id)
     # study = Study()
-    # study = get_study()
+    study = await get_study()
     time_interval = request.args.get("time_interval")
     if not time_interval:
         abort(404)
@@ -73,7 +73,9 @@ async def get_user_timeseries(user_id):
 async def get_leaderboard():
     # args = args_parser.parse_args()
     # study = Study()
-    # study = get_study()
+    study = await get_study()
+    print("Study:")
+    print(study)
     offset = request.args.get("offset")
     limit = request.args.get("limit")
 
@@ -107,12 +109,14 @@ async def username_lookup():
 #     # study.close()
 #     return jsonify(matching_users)
 
-async def initialize_study():
-    study = await Study.create()
+# async def initialize_study():
+#     study = await Study.create()
+#     await study.get_leaderboard(0, 5, 'pastWeek')
 
 
 if __name__ == "__main__":
 
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(initialize_study())
-    app.run(loop=loop, debug=True)
+    # loop = asyncio.get_event_loop()
+    # loop.run_until_complete(initialize_study())
+    # app.run(loop=loop, debug=True)
+    app.run(debug=True)

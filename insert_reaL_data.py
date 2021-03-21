@@ -33,10 +33,14 @@ user_size = 50000
 
 def generate_user_df():
     user_df = pd.DataFrame()
-    user_df["id"] = utilities.generate_random_number(user_size)
+    userid_list = None
+    with open("users.txt", "r") as f:
+        userid_list = f.read()
+
+    user_df["id"] = userid_list.split(",")
     # user_df["username"] = utilities.generate_random_usernames(user_size)
     # user_df["tag"] = utilities.generate_random_tags(user_size)
-    current_streak = [random.randint(0, 10) for _ in range(user_size)]
+    current_streak = [random.randint(0, 10) for _ in range(len(userid_list))]
     user_df["current_streak"] = current_streak
     user_df["longest_streak"] = [i + random.randint(0, 5) for i in current_streak]
 

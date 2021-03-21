@@ -32,6 +32,7 @@ class Study:
         self = Study()
         self.session = await utilities.get_sql_session()
         self.redis_client = await utilities.get_redis_client()
+        return self
 
         # verify that connection to server succeeded
         # self.redis_client.ping()

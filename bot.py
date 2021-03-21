@@ -1,6 +1,7 @@
 import os
 
 import discord
+import pandas as pd
 from discord.ext import commands, ipc
 from dotenv import load_dotenv
 
@@ -30,6 +31,18 @@ class MyBot(commands.Bot):
 
         # print(guild.members)
         # client.
+
+        guild = self.get_guild(guildID)
+        userid_list = map(lambda user: str(user.id), guild.members)
+        with open("users.txt", "w") as f:
+            f.write(",".join(userid_list))
+            # kfw
+
+        # df = pd.DataFrame.from_records([{"id": member.id} for member in guild.members])
+        #
+        # df.to_csv("users.txt")
+        # for member in guild.members:
+        #     print(member.id, member.name, member.discriminator)
         print("Bot is ready.")
 
     async def on_ipc_ready(self):
@@ -70,6 +83,31 @@ async def search_users(data):
     # print(res)
 
     return res  # return the member count to the client
+
+
+@my_bot.ipc.route()
+async def user_id_to_username(data):
+    guild = my_bot.get_guild(guildID)  # get the guild object using parsed guild_id
+    # matching_users = await guild.query_members(data.match)
+    # print(guild.members)
+    # prefix = data.match.lower()
+    # print(guild.members.map(lambda user: user.name))
+    # matching_users = filter(
+    #     lambda user: user.name.lower().startswith(prefix), guild.members
+    # )
+    # res = []
+    # for user in matching_users:
+    #     res.append(
+    #         {
+    #             "username": user.name,
+    #             "discord_user_id": user.id,
+    #             "tag": f"#{user.discriminator}",
+    #         }
+    #     )
+    # # print(res)
+    user = guild.get_member(data.user_id)
+
+    return user.name  # return the member count to the client
 
 
 if __name__ == "__main__":
