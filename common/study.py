@@ -9,29 +9,31 @@ from models import Action, User
 from sqlalchemy.future import select
 from sqlalchemy.orm import sessionmaker
 
-from common import utilities
+from common import async_utilities as utilities
 
 load_dotenv("dev.env")
 
 
 class Study:
-    def __init__(self):
+    def __init__(self, ipc_client, lock):
         # self.engine = utilities.get_engine()
         # self.sqlalchemy_session = sessionmaker(bind=self.engine)()
         # self.sqlalchemy_session = await utilities.get_sql_session()
         # self.redis_client = utilities.get_redis_client()
+        self.lock = lock
+        self.ipc_client = ipc_client
         self.session: Any = None
         self.redis_client: Any = None
-        self.ipc_client = ipc.Client(secret_key="my_secret_key")
         self.role_name_to_obj = utilities.config[
             ("test_" if os.getenv("mode") == "test" else "") + "study_roles"
         ]
 
     @classmethod
-    async def create(cls):
-        self = Study()
+    async def create(cls, ipc_client, lock):
+        self = Study(ipc_client, lock)
         self.session = await utilities.get_sql_session()
         self.redis_client = await utilities.get_redis_client()
+        # self.ipc_client = ipc.Client(secret_key="my_secret_key")
         return self
 
         # verify that connection to server succeeded
@@ -94,9 +96,12 @@ class Study:
 
         # return res
 
-    # def get_username_from_user_id(self, id):
-    #     user = self.sqlalchemy_session.query(User).filter(User.id == int(id)).first()
-    #     return user.username
+    async def get_username_from_user_id(self, id):
+        async with self.lock:
+            return await self.ipc_client.request(
+                "user_id_to_username", user_id=id
+               )
+
 
     async def get_user_stats(self, id):
         """
@@ -105,7 +110,13 @@ class Study:
         timepoint = f"daily_{utilities.get_day_start()}"
         stmt = select(User).filter(User.id == int(id))
         # session = await utilities.get_sql_session()
-        user_sql_obj = (await self.session.execute(stmt)).first()
+        user_sql_obj = (await self.session.execute(stmt)).scalars().first()
+        # print(user_sql_obj)
+        # print(repr(user_sql_obj[0]))
+        # print(user_sql_obj[0].id)
+        # print(user_sql_obj[0]._mapping.items())
+
+        # print(user_sql_obj.items()id)
         # try:
         #     user_sql_obj = (
         #         self.sqlalchemy_session.query(User).filter(User.id == int(id)).first()
@@ -167,20 +178,21 @@ class Study:
             start = 0
 
         id_li = [
-            int(i) for i in self.redis_client.zrevrange(sorted_set_name, start, end)
+            int(i) for i in await self.redis_client.zrevrange(sorted_set_name, start, end)
         ]
         id_with_score = []
 
         for neighbor_id in id_li:
             res = dict()
             res["discord_user_id"] = str(neighbor_id)
-            res["username"] = await self.ipc_client.request(
-                "user_id_to_username", user_id=neighbor_id
-            )
-            res["rank"] = utilities.get_redis_rank(
+            async with self.lock:
+                res["username"] = await self.ipc_client.request(
+                    "user_id_to_username", user_id=neighbor_id
+                   )
+            res["rank"] = await utilities.get_redis_rank(
                 self.redis_client, sorted_set_name, neighbor_id
             )
-            res["study_time"] = utilities.get_redis_score(
+            res["study_time"] = await utilities.get_redis_score(
                 self.redis_client, sorted_set_name, neighbor_id
             )
             id_with_score.append(res)
@@ -190,6 +202,7 @@ class Study:
     async def get_user_timeseries(self, id, time_interval):
         timeseries = await utilities.get_user_timeseries(self.redis_client, id, time_interval)
         return timeseries
+
 
     async def get_leaderboard(self, offset, limit, time_interval):
         timepoint = utilities.time_interval_to_timepoint(time_interval)
@@ -206,13 +219,18 @@ class Study:
         ]
         id_with_score = []
 
+
+        # ipc_client = ipc.Client(secret_key="my_secret_key")
+
+
         for neighbor_id in id_list:
             res = dict()
             res["discord_user_id"] = str(neighbor_id)
-            res["username"] = await self.ipc_client.request(
-                "user_id_to_username", user_id=neighbor_id
-            )
-            # res["username"] = self.get_username_from_user_id(neighbor_id)
+            # res["username"] = "Cole"
+            async with self.lock:
+                res["username"] = await self.ipc_client.request(
+                    "user_id_to_username", user_id=neighbor_id
+                   )
             res["rank"] = await utilities.get_redis_rank(
                 self.redis_client, sorted_set_name, neighbor_id
             )
@@ -221,6 +239,8 @@ class Study:
             )
             id_with_score.append(res)
 
-        num_users = await utilities.get_number_of_users(self.redis_client)
+        async with self.lock:
+            num_users = await self.ipc_client.request("get_member_count")
+
 
         return {"leaderboard": id_with_score, "num_users": num_users}

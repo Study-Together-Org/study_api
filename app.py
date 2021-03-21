@@ -10,7 +10,7 @@ from common.study import Study
 
 app = Quart(__name__)
 ipc_client = ipc.Client(secret_key="my_secret_key")
-load_dotenv("dev.env")
+# load_dotenv("dev.env")
 
 
 # args_parser.add_argument("offset", type=int)
@@ -23,14 +23,15 @@ load_dotenv("dev.env")
 # def abort_if_user_doesnt_exist(discord_user_id):
 #     if not study.user_exists(discord_user_id):
 #         abort(404, message="User {} doesn't exist".format(discord_user_id))
-study = None
 
 
 async def connect_study():
-    return await Study.create()
+    lock = asyncio.Lock()
+    return await Study.create(ipc_client, lock)
 
 
 async def get_study():
+    # return await connect_study()
     if not hasattr(g, "study"):
         # start thread for discord bot
         g.study = await connect_study()
@@ -66,7 +67,8 @@ async def get_user_timeseries(user_id):
     timeseries = await study.get_user_timeseries(user_id, time_interval)
     neighbors = await study.get_neighbor_stats(time_interval, user_id)
     # study.close()
-    return jsonify({"timeseries": timeseries, "neighbors": neighbors})
+    # return jsonify('hello')
+    return {"timeseries": timeseries, "neighbors": neighbors}
 
 
 @app.route("/leaderboard")
@@ -74,8 +76,8 @@ async def get_leaderboard():
     # args = args_parser.parse_args()
     # study = Study()
     study = await get_study()
-    print("Study:")
-    print(study)
+    # print("Study:")
+    # print(study)
     offset = request.args.get("offset")
     limit = request.args.get("limit")
 
@@ -85,17 +87,27 @@ async def get_leaderboard():
     except:
         abort(404)
 
+    # await study.ipc_req(ipc_client)
+    # ipc_client = 
+    # ipc_client = ipc.Client(secret_key="my_secret_key")
+    # await ipc_client.request(
+    #     "user_id_to_username", user_id=235088799074484224
+    # )
+
+    # ipc_client.
     time_interval = request.args.get("time_interval")
     # study.close()
-    return await study.get_leaderboard(offset, limit, time_interval)
+    leaderboard = await study.get_leaderboard(offset, limit, time_interval)
+    return leaderboard
 
 
 @app.route("/users")
 async def username_lookup():
     match = request.args.get("match")
-    matching_users = await ipc_client.request(
-        "search_users", guild_id=os.getenv("guildID"), match=match
-    )  # get the member count of server with ID 12345678
+    async with lock:
+        matching_users = await ipc_client.request(
+            "search_users", match=match
+           )  # get the member count of server with ID 12345678
 
     return jsonify(matching_users)  # display member count
 

@@ -88,26 +88,16 @@ async def search_users(data):
 @my_bot.ipc.route()
 async def user_id_to_username(data):
     guild = my_bot.get_guild(guildID)  # get the guild object using parsed guild_id
-    # matching_users = await guild.query_members(data.match)
     # print(guild.members)
-    # prefix = data.match.lower()
-    # print(guild.members.map(lambda user: user.name))
-    # matching_users = filter(
-    #     lambda user: user.name.lower().startswith(prefix), guild.members
-    # )
-    # res = []
-    # for user in matching_users:
-    #     res.append(
-    #         {
-    #             "username": user.name,
-    #             "discord_user_id": user.id,
-    #             "tag": f"#{user.discriminator}",
-    #         }
-    #     )
-    # # print(res)
-    user = guild.get_member(data.user_id)
-
+    user = guild.get_member(int(data.user_id))
     return user.name  # return the member count to the client
+
+
+@my_bot.ipc.route()
+async def get_member_count(data):
+    guild = my_bot.get_guild(guildID)  # get the guild object using parsed guild_id
+
+    return guild.member_count  # return the member count to the client
 
 
 if __name__ == "__main__":

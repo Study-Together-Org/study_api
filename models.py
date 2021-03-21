@@ -37,6 +37,8 @@ class User(Base):
     # tag = Column(String(32))
     longest_streak = Column(INTEGER, server_default="0")
     current_streak = Column(INTEGER, server_default="0")
+    def __repr__(self):
+        return "<User(id='%s', longest='%s', current='%s')>" % (self.id, self.longest_streak, self.current_streak)
 
 
 class Action(Base):

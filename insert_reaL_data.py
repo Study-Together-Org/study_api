@@ -35,9 +35,9 @@ def generate_user_df():
     user_df = pd.DataFrame()
     userid_list = None
     with open("users.txt", "r") as f:
-        userid_list = f.read()
+        userid_list = f.read().split(",")
 
-    user_df["id"] = userid_list.split(",")
+    user_df["id"] = userid_list
     # user_df["username"] = utilities.generate_random_usernames(user_size)
     # user_df["tag"] = utilities.generate_random_tags(user_size)
     current_streak = [random.randint(0, 10) for _ in range(len(userid_list))]

@@ -1,4 +1,3 @@
-import asyncio
 import logging
 import math
 import os
@@ -8,17 +7,15 @@ import sys
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
-# import psutil
-# import redis
-import aioredis
 import dateparser
 import hjson
 import pandas as pd
+# import psutil
+import redis
 # import shortuuid
 from dotenv import load_dotenv
 from faker import Faker
 from sqlalchemy import create_engine
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
 load_dotenv("dev.env")
@@ -67,6 +64,17 @@ def get_rank_categories(flatten=False, string=True):
     return rank_categories
 
 
+def get_logger(job_name, filename):
+    logger = logging.getLogger(job_name)
+    logger.setLevel(logging.INFO)
+    handler = logging.FileHandler(filename=filename, encoding="utf-8", mode="a")
+    handler.setFormatter(
+        logging.Formatter("%(message)s:%(levelname)s:%(name)s:%(process)d")
+    )
+    logger.addHandler(handler)
+
+    return logger
+
 
 def get_guildID():
     guildID_key_name = ("test_" if os.getenv("mode") == "test" else "") + "guildID"
@@ -77,7 +85,7 @@ def get_guildID():
 def recreate_db(Base):
     redis_client = get_redis_client()
     engine = get_engine()
-    # redis_client.flushall()
+    redis_client.flushall()
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
 
@@ -89,23 +97,11 @@ def get_engine(echo=False):
     )
 
 
-async def get_sql_session(echo=False):
-    async_engine = create_async_engine(
-        f'mysql+aiomysql://{os.getenv("sql_user")}:{os.getenv("sql_password")}@{os.getenv("sql_host")}/{os.getenv("sql_database")}',
-        echo=echo,
-    )
-    async_session = sessionmaker(async_engine, expire_on_commit=False, class_=AsyncSession)
-    return async_session()
-
-
-
-
-
-# def get_timezone_session():
-#     db_var_name = ("test_" if os.getenv("mode") == "test" else "") + "timezone_db"
-#     engine = create_engine(os.getenv(db_var_name))
-#     session = sessionmaker(bind=engine)()
-#     return session
+def get_timezone_session():
+    db_var_name = ("test_" if os.getenv("mode") == "test" else "") + "timezone_db"
+    engine = create_engine(os.getenv(db_var_name))
+    session = sessionmaker(bind=engine)()
+    return session
 
 
 def get_time():
@@ -345,20 +341,15 @@ def get_total_time_for_window(df, get_start_fn=None):
     return total_time
 
 
-async def get_redis_client():
-    port = os.getenv("redis_port")
-    password = os.getenv("redis_password")
-    host = os.getenv("redis_host")
-    db = os.getenv("redis_db_num")
-    return await aioredis.create_redis_pool(f"redis://{password}@{host}:{port}/{db}")
-    # return redis.Redis(
-    #     host=os.getenv("redis_host"),
-    #     port=os.getenv("redis_port"),
-    #     db=int(os.getenv("redis_db_num")),
-    #     username=os.getenv("redis_username"),
-    #     password=os.getenv("redis_password"),
-    #     decode_responses=True,
-    # )
+def get_redis_client():
+    return redis.Redis(
+        host=os.getenv("redis_host"),
+        port=os.getenv("redis_port"),
+        db=int(os.getenv("redis_db_num")),
+        username=os.getenv("redis_username"),
+        password=os.getenv("redis_password"),
+        decode_responses=True,
+    )
 
 
 def get_role_status(role_name_to_obj, hours_cur_month):
@@ -403,7 +394,7 @@ def get_last_line():
 
 def get_last_time(line):
     last_line = " ".join(line.split()[:2])
-    return datetime.strptime(last_line, str(os.getenv("datetime_format")))
+    return datetime.strptime(last_line, os.getenv("datetime_format"))
 
 
 # def kill_last_process(line):
@@ -424,23 +415,23 @@ def get_last_time(line):
 #         pass
 
 
-async def get_redis_rank(redis_client, sorted_set_name, user_id):
-    rank = await redis_client.zrevrank(sorted_set_name, user_id)
+def get_redis_rank(redis_client, sorted_set_name, user_id):
+    rank = redis_client.zrevrank(sorted_set_name, user_id)
 
     if rank is None:
-        await redis_client.zadd(sorted_set_name, {user_id: 0})
-        rank = await redis_client.zrevrank(sorted_set_name, user_id)
+        redis_client.zadd(sorted_set_name, {user_id: 0})
+        rank = redis_client.zrevrank(sorted_set_name, user_id)
 
     return 1 + rank
 
 
-async def get_redis_score(redis_client, sorted_set_name, user_id):
-    score = await redis_client.zscore(sorted_set_name, user_id) or 0
+def get_redis_score(redis_client, sorted_set_name, user_id):
+    score = redis_client.zscore(sorted_set_name, user_id) or 0
     return round_num(score)
 
 
-async def get_number_of_users(redis_client):
-    return await redis_client.hlen("user_id_to_username");
+def get_number_of_users(redis_client):
+    return redis_client.hlen("user_id_to_username");
 
 # def get_username_from_user_id(redis_client, user_id):
 #     return redis_client.hget("user_id_to_username", user_id)
@@ -450,7 +441,7 @@ async def get_number_of_users(redis_client):
 #     return redis_client.hget("username_to_user_id", username)
 
 
-async def get_user_stats(
+def get_user_stats(
     redis_client, user_id, timepoint=get_earliest_timepoint(string=True, prefix=True)
 ):
     stats = dict()
@@ -458,14 +449,14 @@ async def get_user_stats(
 
     for sorted_set_name in [timepoint] + category_key_names[1:]:
         stats[sorted_set_name] = {
-            "rank": await get_redis_rank(redis_client, sorted_set_name, user_id),
-            "study_time": await get_redis_score(redis_client, sorted_set_name, user_id),
+            "rank": get_redis_rank(redis_client, sorted_set_name, user_id),
+            "study_time": get_redis_score(redis_client, sorted_set_name, user_id),
         }
 
     return stats
 
 
-async def get_time_interval_user_stats(
+def get_time_interval_user_stats(
     redis_client, user_id, timepoint=get_earliest_timepoint(string=True, prefix=True)
 ):
     stats = dict()
@@ -473,8 +464,8 @@ async def get_time_interval_user_stats(
 
     for sorted_set_name in [timepoint] + category_key_names[1:]:
         stats[get_time_interval_from_timepoint(sorted_set_name)] = {
-            "rank": await get_redis_rank(redis_client, sorted_set_name, user_id),
-            "study_time": await get_redis_score(redis_client, sorted_set_name, user_id),
+            "rank": get_redis_rank(redis_client, sorted_set_name, user_id),
+            "study_time": get_redis_score(redis_client, sorted_set_name, user_id),
         }
 
     return stats
@@ -493,7 +484,7 @@ def get_time_interval_from_timepoint(timepoint):
         return "error"
 
 
-async def get_user_timeseries(redis_client, user_id, time_interval):
+def get_user_timeseries(redis_client, user_id, time_interval):
 
     time_interval_to_span = {
         "pastDay": 1,
@@ -514,8 +505,8 @@ async def get_user_timeseries(redis_client, user_id, time_interval):
         timeseries.append(
             {
                 "date": sorted_set_name[6:-9],
-                "rank": await get_redis_rank(redis_client, sorted_set_name, user_id),
-                "study_time": await get_redis_score(redis_client, sorted_set_name, user_id),
+                "rank": get_redis_rank(redis_client, sorted_set_name, user_id),
+                "study_time": get_redis_score(redis_client, sorted_set_name, user_id),
             }
         )
 
