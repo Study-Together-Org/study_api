@@ -7,7 +7,8 @@ from dotenv import load_dotenv
 
 load_dotenv("dev.env")
 
-guildID = os.getenv("guildID")
+guildID_key_name = ("test_" if os.getenv("mode") == "test" else "") + "guildID"
+guildID = os.getenv(guildID_key_name)
 
 if guildID is None:
     print("Please set guildID in dev.env")
@@ -32,11 +33,11 @@ class MyBot(commands.Bot):
         # print(guild.members)
         # client.
 
-        guild = self.get_guild(guildID)
-        userid_list = map(lambda user: str(user.id), guild.members)
-        with open("users.txt", "w") as f:
-            f.write(",".join(userid_list))
-            # kfw
+        # guild = self.get_guild(guildID)
+        # userid_list = map(lambda user: str(user.id), guild.members)
+        # with open("users.txt", "w") as f:
+        #     f.write(",".join(userid_list))
+        #     # kfw
 
         # df = pd.DataFrame.from_records([{"id": member.id} for member in guild.members])
         #
@@ -63,41 +64,43 @@ my_bot = MyBot(command_prefix="~", intents=discord.Intents.all())
 
 @my_bot.ipc.route()
 async def search_users(data):
-    guild = my_bot.get_guild(guildID)  # get the guild object using parsed guild_id
-    # matching_users = await guild.query_members(data.match)
-    # print(guild.members)
+    # get the guild object
+    guild = my_bot.get_guild(guildID)  
+
+    # extract the match field from data
     prefix = data.match.lower()
-    # print(guild.members.map(lambda user: user.name))
+
+    # get matching users
     matching_users = filter(
         lambda user: user.name.lower().startswith(prefix), guild.members
     )
-    res = []
-    for user in matching_users:
-        res.append(
-            {
-                "username": user.name,
-                "discord_user_id": user.id,
-                "tag": f"#{user.discriminator}",
-            }
-        )
-    # print(res)
 
-    return res  # return the member count to the client
+    # return list of user info objects
+    return [
+        {"username": user.name, "discord_user_id": str(user.id), "tag": f"#{user.discriminator}"}
+        for user in matching_users
+    ]
 
 
 @my_bot.ipc.route()
 async def user_id_to_username(data):
-    guild = my_bot.get_guild(guildID)  # get the guild object using parsed guild_id
-    # print(guild.members)
+    # get the guild object
+    guild = my_bot.get_guild(guildID)
+
+    # get the member from the user_id
     user = guild.get_member(int(data.user_id))
-    return user.name  # return the member count to the client
+
+    # return the user's name
+    return user.name
 
 
 @my_bot.ipc.route()
 async def get_member_count(data):
-    guild = my_bot.get_guild(guildID)  # get the guild object using parsed guild_id
+    # get the guild object
+    guild = my_bot.get_guild(guildID)
 
-    return guild.member_count  # return the member count to the client
+    # return the member count to the client
+    return guild.member_count
 
 
 if __name__ == "__main__":

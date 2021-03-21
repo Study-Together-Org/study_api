@@ -1,13 +1,9 @@
 import os
-import random
-from datetime import timedelta
 from typing import Any
 
-from discord.ext import ipc
 from dotenv import load_dotenv
-from models import Action, User
+from models import User
 from sqlalchemy.future import select
-from sqlalchemy.orm import sessionmaker
 
 from common import async_utilities as utilities
 
@@ -15,118 +11,65 @@ load_dotenv("dev.env")
 
 
 class Study:
-    def __init__(self, ipc_client, lock):
-        # self.engine = utilities.get_engine()
-        # self.sqlalchemy_session = sessionmaker(bind=self.engine)()
-        # self.sqlalchemy_session = await utilities.get_sql_session()
-        # self.redis_client = utilities.get_redis_client()
-        self.lock = lock
-        self.ipc_client = ipc_client
-        self.session: Any = None
-        self.redis_client: Any = None
+    def __init__(self, redis_client, engine, ipc_client, ipc_lock):
         self.role_name_to_obj = utilities.config[
             ("test_" if os.getenv("mode") == "test" else "") + "study_roles"
         ]
+        self.redis_client = redis_client
+        self.engine = engine
+        # 
+        self.ipc_client = ipc_client
+        # lock for ensuring ipc_client is only requesting once at a time
+        self.ipc_lock = ipc_lock
 
-    @classmethod
-    async def create(cls, ipc_client, lock):
-        self = Study(ipc_client, lock)
-        self.session = await utilities.get_sql_session()
-        self.redis_client = await utilities.get_redis_client()
-        # self.ipc_client = ipc.Client(secret_key="my_secret_key")
-        return self
+    async def user_exists(self, discord_user_id):
+        """
+        Check if a user exists in the server with a discord user id
+        """
+        stmt = select(User).filter(User.id == int(discord_user_id))
 
-        # verify that connection to server succeeded
-        # self.redis_client.ping()
+        async with self.engine.connect() as connection:
+            user_sql_obj = (await connection.execute(stmt)).first()
 
-    # def close(self):
-    #     utilities.commit_or_rollback(self.sqlalchemy_session)
-    #     self.sqlalchemy_session.close()
-    #     self.engine.dispose()
-
-    # def save(self):
-    #     utilities.commit_or_rollback(self.sqlalchemy_session)
-
-    # async def user_exists(self, discord_user_id):
-    #     try:
-    #         stmt = select(User).filter(User.id == int(discord_user_id))
-    #         result = await stmt
-    #         return result.first()
-    #         # user_sql_obj = (
-    #         #     self.sqlalchemy_session.query(User)
-    #         #     .filter(User.id == int(discord_user_id))
-    #         #     .first()
-    #         # )
-    #     except:
-    #         return False
-
-    #     if user_sql_obj:
-    #         return True
-    #     else:
-    #         return False
-
-    # def get_username_from_user_id(self, discord_user_id):
-    #     user = self.sqlalchemy_session.query(User).filter(User.id == int(discord_user_id)).first()
-    #     return user.username
+        # if user exists return true, otherwise false
+        if user_sql_obj:
+            return True
+        else:
+            return False
 
 
-    # def get_matching_users(self, match):
-    #     res = []
-    #     users = self.sqlalchemy_session.query(User).filter(User.username.like(f"%{match}%")).limit(15).all()
-    #     for user in users:
-    #         res.append(
-    #             {
-    #                 "username": user.username,
-    #                 "discord_user_id": str(user.id),
-    #                 "tag": f"#{user.tag}",
-    #             }
-    #         )
+    async def username_lookup(self, match):
+        async with self.ipc_lock:
+            return await self.ipc_client.request(
+                "search_users", match=match
+            )
 
-        # for username, user_id in self.redis_client.hscan(
-        #     "username_to_user_id", 0, match=f"*{match}*"
-        # )[1].items():
-        #     res.append(
-        #         {
-        #             "username": username,
-        #             "discord_user_id": user_id,
-        #             "tag": f"#{random.randint(0, 9999):02d}",
-        #         }
-        #     )
-
-
-        # return res
 
     async def get_username_from_user_id(self, id):
-        async with self.lock:
+        """
+        Get a users name from their discord user id
+
+        Uses ipc to communicate with a discord bot
+        """
+        async with self.ipc_lock:
             return await self.ipc_client.request(
                 "user_id_to_username", user_id=id
                )
 
-
     async def get_user_stats(self, id):
         """
-        return a users stats from their id
+        Return a user's stats from their id
         """
         timepoint = f"daily_{utilities.get_day_start()}"
         stmt = select(User).filter(User.id == int(id))
-        # session = await utilities.get_sql_session()
-        user_sql_obj = (await self.session.execute(stmt)).scalars().first()
-        # print(user_sql_obj)
-        # print(repr(user_sql_obj[0]))
-        # print(user_sql_obj[0].id)
-        # print(user_sql_obj[0]._mapping.items())
-
-        # print(user_sql_obj.items()id)
-        # try:
-        #     user_sql_obj = (
-        #         self.sqlalchemy_session.query(User).filter(User.id == int(id)).first()
-        #     )
-        # except:
-        #     utilities.commit_or_rollback(self.sqlalchemy_session)
+        # engine = await utilities.get_sql_engine()
+        async with self.engine.connect() as connection:
+            user_sql_obj = (await connection.execute(stmt)).first()
 
         stats = await utilities.get_time_interval_user_stats(
             self.redis_client, id, timepoint=timepoint
         )
+
         stats["average_per_day"] = utilities.round_num(
             stats["pastMonth"]["study_time"] / utilities.get_num_days_this_month()
         )
@@ -167,8 +110,10 @@ class Study:
 
         rank = await utilities.get_redis_rank(self.redis_client, sorted_set_name, user_id)
         rank -= 1  # Use 0 index
+        adjust = max(0, 5 - rank)
+
         id_with_score = await self.get_info_from_leaderboard(
-            sorted_set_name, rank - 5, rank + 5
+            sorted_set_name, rank - 5 + adjust, rank + 5 + adjust
         )
 
         return id_with_score
@@ -185,7 +130,7 @@ class Study:
         for neighbor_id in id_li:
             res = dict()
             res["discord_user_id"] = str(neighbor_id)
-            async with self.lock:
+            async with self.ipc_lock:
                 res["username"] = await self.ipc_client.request(
                     "user_id_to_username", user_id=neighbor_id
                    )
@@ -227,7 +172,7 @@ class Study:
             res = dict()
             res["discord_user_id"] = str(neighbor_id)
             # res["username"] = "Cole"
-            async with self.lock:
+            async with self.ipc_lock:
                 res["username"] = await self.ipc_client.request(
                     "user_id_to_username", user_id=neighbor_id
                    )
@@ -239,7 +184,7 @@ class Study:
             )
             id_with_score.append(res)
 
-        async with self.lock:
+        async with self.ipc_lock:
             num_users = await self.ipc_client.request("get_member_count")
 
 

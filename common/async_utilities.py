@@ -89,13 +89,14 @@ def get_engine(echo=False):
     )
 
 
-async def get_sql_session(echo=False):
+async def get_engine_pool(echo=False):
     async_engine = create_async_engine(
         f'mysql+aiomysql://{os.getenv("sql_user")}:{os.getenv("sql_password")}@{os.getenv("sql_host")}/{os.getenv("sql_database")}',
         echo=echo,
+        pool_size=20
     )
-    async_session = sessionmaker(async_engine, expire_on_commit=False, class_=AsyncSession)
-    return async_session()
+    # async_session = sessionmaker(async_engine, expire_on_commit=False, class_=AsyncSession)
+    return async_engine
 
 
 
@@ -344,6 +345,13 @@ def get_total_time_for_window(df, get_start_fn=None):
 
     return total_time
 
+async def get_redis_pool():
+    port = os.getenv("redis_port")
+    password = os.getenv("redis_password")
+    host = os.getenv("redis_host")
+    db = os.getenv("redis_db_num")
+    return await aioredis.create_redis_pool(f"redis://{password}@{host}:{port}/{db}", minsize=10, maxsize=20)
+
 
 async def get_redis_client():
     port = os.getenv("redis_port")
@@ -427,6 +435,7 @@ def get_last_time(line):
 async def get_redis_rank(redis_client, sorted_set_name, user_id):
     rank = await redis_client.zrevrank(sorted_set_name, user_id)
 
+    # print(user_id)
     if rank is None:
         await redis_client.zadd(sorted_set_name, {user_id: 0})
         rank = await redis_client.zrevrank(sorted_set_name, user_id)
@@ -461,6 +470,8 @@ async def get_user_stats(
             "rank": await get_redis_rank(redis_client, sorted_set_name, user_id),
             "study_time": await get_redis_score(redis_client, sorted_set_name, user_id),
         }
+
+    print(stats)
 
     return stats
 
@@ -575,10 +586,10 @@ def increment_studytime(
         redis_client.zincrby(sorted_set_name, incr, user_id)
 
 
-def commit_or_rollback(session):
+async def commit_or_rollback(session):
     try:
-        session.commit()
+        await session.commit()
     except Exception as e:
         print(e)
-        session.rollback()
+        await session.rollback()
         raise
