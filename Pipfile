@@ -22,6 +22,8 @@ discord = "*"
 "discord.py" = "*"
 quart = "*"
 discord-ext-ipc = "*"
+aioredis = "*"
+aiomysql = "*"
 
 [dev-packages]
 

@@ -33,8 +33,8 @@ class User(Base):
     # Question - How to make it just use the class name instead of hard coding the table name?
     __tablename__ = "user"
     id = Column(BIGINT, primary_key=True)
-    username = Column(String(32))
-    tag = Column(String(32))
+    # username = Column(String(32))
+    # tag = Column(String(32))
     longest_streak = Column(INTEGER, server_default="0")
     current_streak = Column(INTEGER, server_default="0")
 

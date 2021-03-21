@@ -6,6 +6,14 @@ from dotenv import load_dotenv
 
 load_dotenv("dev.env")
 
+guildID = os.getenv("guildID")
+
+if guildID is None:
+    print("Please set guildID in dev.env")
+    exit()
+else:
+    guildID = int(guildID)
+
 
 class MyBot(commands.Bot):
     def __init__(self, *args, **kwargs):
@@ -15,6 +23,13 @@ class MyBot(commands.Bot):
 
     async def on_ready(self):
         """Called upon the READY event"""
+        # await self.fetch_guild(os.getenv("guildID"))
+        # guild = my_bot.get_guild(
+        #     int(guildID)
+        # )  # get the guild object using parsed guild_id
+
+        # print(guild.members)
+        # client.
         print("Bot is ready.")
 
     async def on_ipc_ready(self):
@@ -25,24 +40,34 @@ class MyBot(commands.Bot):
         """Called upon an error being raised within an IPC route"""
         print(endpoint, "raised", error)
 
+    @commands.command()
+    async def info(self, ctx):
+        await ctx.send(f"Simple bot for testing ipc and guild.query_members")
 
-my_bot = MyBot(command_prefix="!", intents=discord.Intents.all())
+
+my_bot = MyBot(command_prefix="~", intents=discord.Intents.all())
 
 
 @my_bot.ipc.route()
 async def search_users(data):
-    guild = await my_bot.fetch_guild(
-        data.guild_id
-    )  # get the guild object using parsed guild_id
-    matching_users = await guild.query_members(data.match)
+    guild = my_bot.get_guild(guildID)  # get the guild object using parsed guild_id
+    # matching_users = await guild.query_members(data.match)
+    # print(guild.members)
+    prefix = data.match.lower()
+    # print(guild.members.map(lambda user: user.name))
+    matching_users = filter(
+        lambda user: user.name.lower().startswith(prefix), guild.members
+    )
     res = []
     for user in matching_users:
-        res.append({
-            "username": user.name,
-            "discord_user_id": user.id,
-            "tag": f"#{user.discriminator}"
-        })
-    print(res)
+        res.append(
+            {
+                "username": user.name,
+                "discord_user_id": user.id,
+                "tag": f"#{user.discriminator}",
+            }
+        )
+    # print(res)
 
     return res  # return the member count to the client
 

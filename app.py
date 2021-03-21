@@ -1,4 +1,5 @@
 # from flask import Flask, abort, g, jsonify, request
+import asyncio
 import os
 
 from discord.ext import ipc
@@ -11,6 +12,7 @@ app = Quart(__name__)
 ipc_client = ipc.Client(secret_key="my_secret_key")
 load_dotenv("dev.env")
 
+
 # args_parser.add_argument("offset", type=int)
 # args_parser.add_argument("limit", type=int)
 # args_parser.add_argument("time_interval", type=str)
@@ -21,56 +23,57 @@ load_dotenv("dev.env")
 # def abort_if_user_doesnt_exist(discord_user_id):
 #     if not study.user_exists(discord_user_id):
 #         abort(404, message="User {} doesn't exist".format(discord_user_id))
+study = None
 
 
-def connect_study():
-    return Study()
-
-
-def get_study():
-    if not hasattr(g, "study"):
-        # start thread for discord bot
-        g.study = connect_study()
-    return g.study
-
-
-@app.teardown_appcontext
-def close_study(e):
-    if hasattr(g, "study"):
-        g.study.close()
+# def connect_study():
+#     return Study()
+# 
+# 
+# def get_study():
+#     if not hasattr(g, "study"):
+#         # start thread for discord bot
+#         g.study = connect_study()
+#     return g.study
+# 
+# 
+# @app.teardown_appcontext
+# def close_study(e):
+#     if hasattr(g, "study"):
+#         g.study.close()
 
 
 @app.route("/userstats/<user_id>")
-def get_user_stats(user_id):
+async def get_user_stats(user_id):
     # abort_if_user_doesnt_exist(user_id)
     # study = Study()
-    study = get_study()
-    stats = study.get_user_stats(user_id)
-    roleInfo = study.get_user_role_info(user_id)
-    username = study.get_username_from_user_id(user_id)
+    # study = get_study()
+    stats = await study.get_user_stats(user_id)
+    roleInfo = await study.get_user_role_info(user_id)
+    username = await study.get_username_from_user_id(user_id)
     # study.close()
     return {"username": username, "stats": stats, "roleInfo": roleInfo}
 
 
 @app.route("/usertimeseries/<user_id>")
-def get_user_timeseries(user_id):
+async def get_user_timeseries(user_id):
     # abort_if_user_doesnt_exist(user_id)
     # study = Study()
-    study = get_study()
+    # study = get_study()
     time_interval = request.args.get("time_interval")
     if not time_interval:
         abort(404)
-    timeseries = study.get_user_timeseries(user_id, time_interval)
-    neighbors = study.get_neighbor_stats(time_interval, user_id)
+    timeseries = await study.get_user_timeseries(user_id, time_interval)
+    neighbors = await study.get_neighbor_stats(time_interval, user_id)
     # study.close()
     return jsonify({"timeseries": timeseries, "neighbors": neighbors})
 
 
 @app.route("/leaderboard")
-def get_leaderboard():
+async def get_leaderboard():
     # args = args_parser.parse_args()
     # study = Study()
-    study = get_study()
+    # study = get_study()
     offset = request.args.get("offset")
     limit = request.args.get("limit")
 
@@ -82,7 +85,7 @@ def get_leaderboard():
 
     time_interval = request.args.get("time_interval")
     # study.close()
-    return study.get_leaderboard(offset, limit, time_interval)
+    return await study.get_leaderboard(offset, limit, time_interval)
 
 
 @app.route("/users")
@@ -104,6 +107,12 @@ async def username_lookup():
 #     # study.close()
 #     return jsonify(matching_users)
 
+async def initialize_study():
+    study = await Study.create()
+
 
 if __name__ == "__main__":
-    app.run(debug=True)
+
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(initialize_study())
+    app.run(loop=loop, debug=True)
