@@ -10,8 +10,14 @@ from common.study import Study
 app = Quart(__name__)
 
 
+async def abort_if_user_doesnt_exist(user_id):
+    study = app.study  # type: ignore
+    if not await study.user_exists(user_id):
+        abort(404)
+
+
 @app.before_first_request
-async def create_db():
+async def initialize_app_study():
     """
     Initialize a study object and attach it to the quart app.
     - redis for connecting to redis
@@ -34,7 +40,7 @@ async def get_user_stats(user_id):
     Parameters:
     - user_id (url param): the user's id
     """
-    # abort_if_user_doesnt_exist(user_id)
+    await abort_if_user_doesnt_exist(user_id)
 
     study = app.study  # type: ignore
     stats = await study.get_user_stats(user_id)
@@ -52,6 +58,7 @@ async def get_user_timeseries(user_id):
     - user_id (url param): the user's id
     - time_interval (query param): the time interval to query on
     """
+    await abort_if_user_doesnt_exist(user_id)
 
     study = app.study  # type: ignore
     time_interval = request.args.get("time_interval")

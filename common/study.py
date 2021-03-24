@@ -1,5 +1,4 @@
 import os
-from typing import Any
 
 from dotenv import load_dotenv
 from models import User
@@ -17,14 +16,15 @@ class Study:
         ]
         self.redis_client = redis_client
         self.engine = engine
-        # 
         self.ipc_client = ipc_client
-        # lock for ensuring ipc_client is only requesting once at a time
         self.ipc_lock = ipc_lock
 
     async def user_exists(self, discord_user_id):
         """
         Check if a user exists in the server with a discord user id
+
+        Parameters:
+        - discord_user_id (int): user id to check if exists
         """
         stmt = select(User).filter(User.id == int(discord_user_id))
 
@@ -39,6 +39,9 @@ class Study:
 
 
     async def username_lookup(self, match):
+        """
+        Return a list of users matching a prefix
+        """
         async with self.ipc_lock:
             return await self.ipc_client.request(
                 "search_users", match=match
@@ -48,8 +51,6 @@ class Study:
     async def get_username_from_user_id(self, id):
         """
         Get a users name from their discord user id
-
-        Uses ipc to communicate with a discord bot
         """
         async with self.ipc_lock:
             return await self.ipc_client.request(
@@ -62,7 +63,6 @@ class Study:
         """
         timepoint = f"daily_{utilities.get_day_start()}"
         stmt = select(User).filter(User.id == int(id))
-        # engine = await utilities.get_sql_engine()
         async with self.engine.connect() as connection:
             user_sql_obj = (await connection.execute(stmt)).first()
 
@@ -79,8 +79,10 @@ class Study:
 
         return stats
 
-    async def get_user_role_info(self, id):
-        user_id = id
+    async def get_user_role_info(self, user_id):
+        """
+        Get a users role info from their id
+        """
         rank_categories = utilities.get_rank_categories()
 
         hours_cur_month = await utilities.get_redis_score(
@@ -103,7 +105,18 @@ class Study:
             "time_to_next_role": time_to_next_role,
         }
 
+    async def get_user_timeseries(self, id, time_interval):
+        """
+        Get a user's timeseries data
+        """
+        timeseries = await utilities.get_user_timeseries(self.redis_client, id, time_interval)
+        return timeseries
+
+
     async def get_neighbor_stats(self, time_interval, user_id):
+        """
+        Get the neighbors of a user by id for a certain time_interval
+        """
 
         timepoint = utilities.time_interval_to_timepoint(time_interval)
         sorted_set_name = timepoint
@@ -119,6 +132,11 @@ class Study:
         return id_with_score
 
     async def get_info_from_leaderboard(self, sorted_set_name, start=0, end=-1):
+        """
+        Get leaderboard information with start and end flags
+
+        Used for getting the neighbors of a user
+        """
         if start < 0:
             start = 0
 
@@ -144,48 +162,19 @@ class Study:
 
         return id_with_score
 
-    async def get_user_timeseries(self, id, time_interval):
-        timeseries = await utilities.get_user_timeseries(self.redis_client, id, time_interval)
-        return timeseries
-
-
     async def get_leaderboard(self, offset, limit, time_interval):
-        timepoint = utilities.time_interval_to_timepoint(time_interval)
+        """
+        Get leaderboard information and num_users
+
+        Used for populating the leaderboard table
+        """
+        sorted_set_name = utilities.time_interval_to_timepoint(time_interval)
         start = offset
         end = offset + limit
 
-        sorted_set_name = timepoint
-
-        if start < 0:
-            start = 0
-
-        id_list = [
-            int(i) for i in await self.redis_client.zrevrange(sorted_set_name, start, end)
-        ]
-        id_with_score = []
-
-
-        # ipc_client = ipc.Client(secret_key="my_secret_key")
-
-
-        for neighbor_id in id_list:
-            res = dict()
-            res["discord_user_id"] = str(neighbor_id)
-            # res["username"] = "Cole"
-            async with self.ipc_lock:
-                res["username"] = await self.ipc_client.request(
-                    "user_id_to_username", user_id=neighbor_id
-                   )
-            res["rank"] = await utilities.get_redis_rank(
-                self.redis_client, sorted_set_name, neighbor_id
-            )
-            res["study_time"] = await utilities.get_redis_score(
-                self.redis_client, sorted_set_name, neighbor_id
-            )
-            id_with_score.append(res)
+        leaderboard = await self.get_info_from_leaderboard(sorted_set_name, start, end)
 
         async with self.ipc_lock:
             num_users = await self.ipc_client.request("get_member_count")
 
-
-        return {"leaderboard": id_with_score, "num_users": num_users}
+        return {"leaderboard": leaderboard, "num_users": num_users}
