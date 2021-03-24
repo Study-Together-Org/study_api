@@ -74,36 +74,12 @@ There are four main queries:
 
 Return a list of matching users and their userids.
 
-Takes a param for match. The list of users will be searched by the glob `f"*{match}*"`.
+Takes a param for match. The list of users will be searched by the glob `f"*{match}"`.
 
 Example call:
 
 ```
-http://localhost:5000/users?match=hi
-```
-
-Example response:
-
-```
-{
-    "phixltkpvm": "215270539886472525",
-    "hizxfwuhhw": "593950567587474809",
-    "znyxihipjl": "675574458552210453",
-    "pbyvmwwphi": "714168395175613125",
-    "sghlchiemd": "948247212994799808"
-}
-```
-
-
-## leaderboard
-
-Returns leaderboard information on a time interval. 
-
-Takes params for offset, limit, and time_interval. Time interval must be one of "pastDay", "pastWeek", "pastMonth", "allTime".
-
-Example call: 
-```
-leaderboard?offset=0&limit=5&time_interval=pastWeek
+http://localhost:5000/users?match=cole
 ```
 
 Example response:
@@ -111,42 +87,89 @@ Example response:
 ```
 [
     {
-        "discord_user_id": 754118016803749048,
-        "username": "yvniooxeuk",
-        "rank": 1,
-        "study_time": 70.0
+        "discord_user_id": "619663424812613662",
+        "tag": "#3088",
+        "username": "Cole Killian"
     },
     {
-        "discord_user_id": 927698802236956910,
-        "username": "esqqbzrlrh",
-        "rank": 2,
-        "study_time": 68.0
+        "discord_user_id": "294865385780412416",
+        "tag": "#8220",
+        "username": "Coleman"
     },
     {
-        "discord_user_id": 290378422076173744,
-        "username": "olbtvlinkv",
-        "rank": 3,
-        "study_time": 68.0
+        "discord_user_id": "687847542041608192",
+        "tag": "#4048",
+        "username": "Cole Fluet"
     },
     {
-        "discord_user_id": 173816835082273743,
-        "username": "oswcsocdcf",
-        "rank": 4,
-        "study_time": 68.0
+        "discord_user_id": "400866823643332608",
+        "tag": "#0711",
+        "username": "coleus"
     },
     {
-        "discord_user_id": 863085665046287668,
-        "username": "vrltvwdppx",
-        "rank": 5,
-        "study_time": 67.0
-    },
-    {
-        "discord_user_id": 738628035617842786,
-        "username": "xaedunnmzp",
-        "rank": 6,
-        "study_time": 67.0
+        "discord_user_id": "254251545837699072",
+        "tag": "#4408",
+        "username": "Colean"
     }
 ]
+```
+
+
+## leaderboard
+
+Returns leaderboard information on a time interval and the number of users in the server.
+
+Takes params for offset, limit, and time_interval. Time interval must be one of "pastDay", "pastWeek", "pastMonth", "allTime".
+
+Example call: 
+```
+http://localhost:5000/leaderboard?offset=0&limit=5&time_interval=pastWeek
+```
+
+Example response:
+
+```
+{
+    "leaderboard": [
+        {
+            "discord_user_id": "724579964007219221",
+            "rank": 1,
+            "study_time": 112,
+            "username": "saberscientist"
+        },
+        {
+            "discord_user_id": "716376818072027167",
+            "rank": 2,
+            "study_time": 112,
+            "username": "Bot of Discord"
+        },
+        {
+            "discord_user_id": "708711987911065663",
+            "rank": 3,
+            "study_time": 112,
+            "username": "Sadaf"
+        },
+        {
+            "discord_user_id": "683017009889411242",
+            "rank": 4,
+            "study_time": 112,
+            "username": "Discord User"
+        },
+        {
+            "discord_user_id": "578536678961053716",
+            "rank": 5,
+            "study_time": 112,
+            "username": "reedo"
+        },
+        {
+            "discord_user_id": "494580308415348754",
+            "rank": 6,
+            "study_time": 112,
+            "username": "Unturneddaddy"
+        }
+    ],
+    "num_users": 30625
+}
 ```
 
 ## userstats
@@ -157,50 +180,50 @@ Takes url args for user_id.
 
 Example call:
 ```
-http://localhost:5000/userstats/102484975215862243
+http://localhost:5000/userstats/619663424812613662
 ```
 
 Example response:
 
 ```
 {
-    "username": "bluzoosqbm",
-    "stats": {
-        "pastDay": {
-            "rank": 61,
-            "study_time": 7.0
+    "roleInfo": {
+        "next_role": {
+            "hours": "220-350",
+            "id": 676158518956654612,
+            "mention": "<@&792781265547821089>",
+            "name": "study master (220-350h+)"
         },
-        "pastWeek": {
-            "rank": 25,
-            "study_time": 61.0
+        "role": {
+            "hours": "160-220",
+            "id": 674297907150716959,
+            "mention": "<@&792781265547821088>",
+            "name": "study-machine (160-220h)"
+        },
+        "time_to_next_role": 44.3
+    },
+    "stats": {
+        "all_time": {
+            "rank": 18463,
+            "study_time": 175.7
+        },
+        "average_per_day": 7.321,
+        "currentStreak": 3,
+        "longestStreak": 5,
+        "pastDay": {
+            "rank": 6461,
+            "study_time": 12.6
         },
         "pastMonth": {
-            "rank": 185,
-            "study_time": 39.0
+            "rank": 18463,
+            "study_time": 175.7
         },
-        "all_time": {
-            "rank": 185,
-            "study_time": 39.0
-        },
-        "average_per_day": 1.857,
-        "currentStreak": 1,
-        "longestStreak": 1
+        "pastWeek": {
+            "rank": 19701,
+            "study_time": 40
+        }
     },
-    "roleInfo": {
-        "role": {
-            "hours": "20-40",
-            "id": 666302147176169502,
-            "name": "advanced (20-40h)",
-            "mention": "<@&792781265542971409>"
-        },
-        "next_role": {
-            "hours": "40-60",
-            "id": 666302227484508170,
-            "name": "expert (40-60h)",
-            "mention": "<@&792781265542971410>"
-        },
-        "time_to_next_role": 1.0
-    }
+    "username": "Cole Killian"
 }
 ```
 
@@ -212,120 +235,116 @@ Takes url args for user_id, and params for time_interval. Time interval must be 
 
 Example call:
 ```
-http://localhost:5000/usertimeseries/102484975215862243?time_interval=pastWeek
+http://localhost:5000/usertimeseries/619663424812613662?time_interval=pastWeek
 ```
 
 Example response:
 ```
 {
-    "timeseries": [
-        {
-            "date": "2021-02-21",
-            "rank": 61,
-            "study_time": 7.0
-        },
-        {
-            "date": "2021-02-20",
-            "rank": 52,
-            "study_time": 7.0
-        },
-        {
-            "date": "2021-02-19",
-            "rank": 96,
-            "study_time": 5.0
-        },
-        {
-            "date": "2021-02-18",
-            "rank": 123,
-            "study_time": 4.0
-        },
-        {
-            "date": "2021-02-17",
-            "rank": 29,
-            "study_time": 9.0
-        },
-        {
-            "date": "2021-02-16",
-            "rank": 43,
-            "study_time": 8.0
-        },
-        {
-            "date": "2021-02-15",
-            "rank": 128,
-            "study_time": 4.0
-        }
-    ],
     "neighbors": [
         {
-            "discord_user_id": 518488332978841649,
-            "username": "hzpgidkuwc",
-            "rank": 20,
-            "study_time": 63.0
+            "discord_user_id": "135465783089168384",
+            "rank": 19696,
+            "study_time": 40.1,
+            "username": "bboc"
         },
         {
-            "discord_user_id": 228974702591634818,
-            "username": "hgncxhevry",
-            "rank": 21,
-            "study_time": 63.0
+            "discord_user_id": "758651227302526976",
+            "rank": 19697,
+            "study_time": 40,
+            "username": "wilbur | offline | exams"
         },
         {
-            "discord_user_id": 217840426440527737,
-            "username": "jbhyqdnnyi",
-            "rank": 22,
-            "study_time": 63.0
+            "discord_user_id": "754617725225140234",
+            "rank": 19698,
+            "study_time": 40,
+            "username": "Synrr."
         },
         {
-            "discord_user_id": 562511513199020028,
-            "username": "tfluesqkql",
-            "rank": 23,
-            "study_time": 62.0
+            "discord_user_id": "753854331500888154",
+            "rank": 19699,
+            "study_time": 40,
+            "username": "Gangu"
         },
         {
-            "discord_user_id": 438011540564379889,
-            "username": "oufvdmsunn",
-            "rank": 24,
-            "study_time": 62.0
+            "discord_user_id": "707024839159971841",
+            "rank": 19700,
+            "study_time": 40,
+            "username": "Cupica"
         },
         {
-            "discord_user_id": 991287113119009422,
-            "username": "bluzoosqbm",
-            "rank": 25,
-            "study_time": 61.0
+            "discord_user_id": "619663424812613662",
+            "rank": 19701,
+            "study_time": 40,
+            "username": "Cole Killian"
         },
         {
-            "discord_user_id": 462229337138157709,
-            "username": "supvclaxtz",
-            "rank": 26,
-            "study_time": 61.0
+            "discord_user_id": "519275513156730927",
+            "rank": 19702,
+            "study_time": 40,
+            "username": "r33nter"
         },
         {
-            "discord_user_id": 428869972841033146,
-            "username": "joffmjarky",
-            "rank": 27,
-            "study_time": 61.0
+            "discord_user_id": "494498561099300865",
+            "rank": 19703,
+            "study_time": 40,
+            "username": "rozetup"
         },
         {
-            "discord_user_id": 737826033723676601,
-            "username": "holkgvwiit",
-            "rank": 28,
-            "study_time": 60.0
+            "discord_user_id": "476099239848575007",
+            "rank": 19704,
+            "study_time": 40,
+            "username": "sudo rm -rf / --no-preserve-root"
         },
         {
-            "discord_user_id": 182321490621867435,
-            "username": "sllyuqouvf",
-            "rank": 29,
-            "study_time": 60.0
+            "discord_user_id": "471181139093094400",
+            "rank": 19705,
+            "study_time": 40,
+            "username": "🌸⌬天桜（あまざくら）.py☭"
         },
         {
-            "discord_user_id": 708366450576113731,
-            "username": "krrxgzgtqo",
-            "rank": 30,
-            "study_time": 59.0
+            "discord_user_id": "467451098735837186",
+            "rank": 19706,
+            "study_time": 40,
+            "username": "CaptainVietnam6"
+        }
+    ],
+    "timeseries": [
+        {
+            "date": "2021-03-17",
+            "rank": 17100,
+            "study_time": 7
+        },
+        {
+            "date": "2021-03-18",
+            "rank": 18619,
+            "study_time": 6.3
+        },
+        {
+            "date": "2021-03-19",
+            "rank": 3467,
+            "study_time": 14.2
+        },
+        {
+            "date": "2021-03-20",
+            "rank": 8618,
+            "study_time": 11.5
+        },
+        {
+            "date": "2021-03-21",
+            "rank": 17356,
+            "study_time": 6.8
+        },
+        {
+            "date": "2021-03-22",
+            "rank": 24330,
+            "study_time": 3.2
+        },
+        {
+            "date": "2021-03-23",
+            "rank": 6461,
+            "study_time": 12.6
         }
     ]
 }
 ```
-
-# TODO
-
-- Right now users are inserted into the database if they are queried and don't exist. Don't do this.
