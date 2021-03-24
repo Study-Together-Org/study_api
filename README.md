@@ -1,6 +1,6 @@
-# Study Together Flask Api
+# Study Together Api
 
-This is a restful flask api for querying data related to study together.
+This is a quart api for querying data related to study together.
 
 # Getting Started
 
@@ -43,16 +43,23 @@ cp dev.env.example dev.env
 
 This will run migrations and then insert fake data into the mysql and redis dbs.
 ```bash
+# install dependencies
 pipenv install
+# activate the environment
 pipenv shell
+# run insert_fake_data
 python insert_fake_data.py
 ```
 
 5. Start the Api
 
-This will start the flask api on port 5000.
+This will start the quart api on port 5000.
 ```bash
+# activate the environment
 pipenv shell
+# start the bot
+python bot.py & 
+# start the quart api
 python app.py
 ```
 
