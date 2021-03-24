@@ -8,13 +8,10 @@ import sys
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
-# import psutil
-# import redis
 import aioredis
 import dateparser
 import hjson
 import pandas as pd
-# import shortuuid
 from dotenv import load_dotenv
 from faker import Faker
 from sqlalchemy import create_engine
@@ -97,17 +94,6 @@ async def get_engine_pool(echo=False):
     )
     # async_session = sessionmaker(async_engine, expire_on_commit=False, class_=AsyncSession)
     return async_engine
-
-
-
-
-
-# def get_timezone_session():
-#     db_var_name = ("test_" if os.getenv("mode") == "test" else "") + "timezone_db"
-#     engine = create_engine(os.getenv(db_var_name))
-#     session = sessionmaker(bind=engine)()
-#     return session
-
 
 def get_time():
     now = datetime.utcnow()
@@ -209,45 +195,6 @@ def timedelta_to_hours(td):
     return td.total_seconds() / 3600
 
 
-# def get_user_timeinfo(user, timepoint):
-#     from timezone_bot import query_zone
-#
-#     user_timezone = await query_zone(user)
-#
-#     zone_obj = ZoneInfo(user_timezone)
-#     # Here the placeholder is not limited to "-"
-#     user_timepoint = parse_time(timepoint, zone_obj=zone_obj)
-#
-#     if user_timepoint:
-#         user_timepoint = user_timepoint.replace(tzinfo=zone_obj)
-#         std_zone_obj = ZoneInfo(config["business"]["timezone"])
-#         utc_timepoint = user_timepoint.astimezone(std_zone_obj)
-#         cur_timepoint = get_time().replace(tzinfo=std_zone_obj)
-#
-#         if utc_timepoint > cur_timepoint or utc_timepoint < (
-#             cur_timepoint - timedelta(days=1)
-#         ):
-#             await ctx.send(
-#                 f'**Using default: You must specify a past time within the last 24 hours (example: "30" will not work)**'
-#             )
-#             timepoint = get_closest_timepoint(get_earliest_timepoint(), prefix=False)
-#         else:
-#             timepoint = get_closest_timepoint(
-#                 utc_timepoint.replace(tzinfo=None), prefix=False
-#             )
-#     else:
-#         timepoint = get_closest_timepoint(get_earliest_timepoint(), prefix=False)
-#
-#     display_timepoint = dateparser.parse(timepoint).replace(
-#         tzinfo=ZoneInfo(config["business"]["timezone"])
-#     )
-#     display_timepoint = display_timepoint.astimezone(zone_obj).strftime(
-#         os.getenv("datetime_format").split(".")[0]
-#     )
-#
-#     return "daily_" + timepoint, user_timezone, display_timepoint
-
-
 def round_num(num, ndigits=None):
     if not ndigits:
         ndigits_var_name = (
@@ -319,32 +266,6 @@ def generate_username(size=1):
     return [fake.user_name() for _ in range(size)]
 
 
-def get_total_time_for_window(df, get_start_fn=None):
-    df = df.sort_values(by=["creation_time"])
-    total_time = timedelta(0)
-    start_idx = 0
-    end_idx = len(df)
-
-    if len(df):
-        if df["category"].iloc[0] == "end channel":
-            total_time += df["creation_time"].iloc[0] - pd.to_datetime(get_start_fn())
-            start_idx = 1
-
-        if df["category"].iloc[-1] == "start channel":
-            total_time += pd.to_datetime(get_time()) - df["creation_time"].iloc[-1]
-            end_idx -= 1
-
-    df = df.iloc[start_idx:end_idx]
-    enter_df = df[df["category"] == "start channel"]["creation_time"]
-    exit_df = df[df["category"] == "end channel"]["creation_time"]
-    total_time += pd.to_timedelta((exit_df.values - enter_df.values).sum())
-    total_time = timedelta_to_hours(total_time)
-
-    if total_time < 0:
-        raise Exception("study time below zero")
-
-    return total_time
-
 async def get_redis_pool():
     port = os.getenv("redis_port")
     password = os.getenv("redis_password")
@@ -414,24 +335,6 @@ def get_last_time(line):
     return datetime.strptime(last_line, str(os.getenv("datetime_format")))
 
 
-# def kill_last_process(line):
-#     if not line:
-#         return
-#
-#     parts = line.split()
-#     pid = int(parts[-1].split(":")[-1])
-#
-#     try:
-#         process = psutil.Process(pid)
-#
-#         if "time_counter.py" in " ".join(process.cmdline()):
-#             process.terminate()
-#             print(f"{pid} killed")
-#
-#     except:
-#         pass
-
-
 async def get_redis_rank(redis_client, sorted_set_name, user_id):
     rank = await redis_client.zrevrank(sorted_set_name, user_id)
 
@@ -446,17 +349,6 @@ async def get_redis_rank(redis_client, sorted_set_name, user_id):
 async def get_redis_score(redis_client, sorted_set_name, user_id):
     score = await redis_client.zscore(sorted_set_name, user_id) or 0
     return round_num(score)
-
-
-async def get_number_of_users(redis_client):
-    return await redis_client.hlen("user_id_to_username");
-
-# def get_username_from_user_id(redis_client, user_id):
-#     return redis_client.hget("user_id_to_username", user_id)
-# 
-# 
-# def get_user_id_from_username(redis_client, username):
-#     return redis_client.hget("username_to_user_id", username)
 
 
 async def get_user_stats(
@@ -540,56 +432,3 @@ def time_interval_to_timepoint(time_interval):
         "pastMonth": f"monthly_{get_month()}",
         "allTime": "all_time",
     }[time_interval]
-
-
-def get_stats_diff(prev_stats, cur_stats):
-    prev_studytime = [item["study_time"] for item in prev_stats.values()]
-    cur_studytime = [item["study_time"] for item in cur_stats.values()]
-    diff = [round_num(cur - prev) for prev, cur in zip(prev_studytime, cur_studytime)]
-
-    return diff
-
-
-def check_stats_diff(prev_stats, mid_stats, time_to_stay, multiplier, redis_tolerance):
-    diff = get_stats_diff(prev_stats, mid_stats)
-    excess = [hours * 3600 - time_to_stay * multiplier for hours in diff]
-    is_all_increment_right = [0 <= hours <= redis_tolerance for hours in excess]
-    return all(is_all_increment_right)
-
-
-def sleep(seconds):
-    # TODO (?) print decimals
-    seconds = math.ceil(seconds)
-
-    for remaining in range(seconds, 0, -1):
-        sys.stdout.write("\r")
-        sys.stdout.write("{:2d} seconds remaining.".format(remaining))
-        sys.stdout.flush()
-        import time
-
-        time.sleep(1)
-
-
-def increment_studytime(
-    category_key_names,
-    redis_client,
-    user_id,
-    in_session_incrs,
-    std_incr=None,
-    last_time=None,
-):
-    if std_incr is None:
-        std_incr = timedelta_to_hours(get_time() - last_time)
-
-    for i, sorted_set_name in enumerate(category_key_names):
-        incr = in_session_incrs[i] if i < num_intervals else std_incr
-        redis_client.zincrby(sorted_set_name, incr, user_id)
-
-
-async def commit_or_rollback(session):
-    try:
-        await session.commit()
-    except Exception as e:
-        print(e)
-        await session.rollback()
-        raise
