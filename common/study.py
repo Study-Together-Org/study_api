@@ -24,7 +24,7 @@ class Study:
         Check if a user exists in the server with a discord user id
 
         Parameters:
-        - discord_user_id (int): user id to check if exists
+        - discord_user_id (str): user id to check if exists
         """
         stmt = select(User).filter(User.id == int(discord_user_id))
 
@@ -70,7 +70,7 @@ class Study:
             self.redis_client, id, timepoint=timepoint
         )
 
-        stats["average_per_day"] = utilities.round_num(
+        stats["averagePerDay"] = utilities.round_num(
             stats["pastMonth"]["study_time"] / utilities.get_num_days_this_month()
         )
 
