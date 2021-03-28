@@ -26,6 +26,12 @@ class Study:
         Parameters:
         - discord_user_id (str): user id to check if exists
         """
+        try:
+            discord_user_id = int(discord_user_id)
+        except:
+            # not an int
+            return False
+
         stmt = select(User).filter(User.id == int(discord_user_id))
 
         async with self.engine.connect() as connection:
