@@ -272,7 +272,11 @@ async def get_redis_pool():
     password = os.getenv("redis_password")
     host = os.getenv("redis_host")
     db = os.getenv("redis_db_num")
-    return await aioredis.create_redis_pool(f"redis://{username}:{password}@{host}:{port}/{db}", minsize=10, maxsize=20)
+    if username is not None and password is not None:
+        return await aioredis.create_redis_pool(f"redis://{username}:{password}@{host}:{port}/{db}", minsize=10, maxsize=20)
+    else:
+        return await aioredis.create_redis_pool(f"redis://@{host}:{port}/{db}", minsize=10, maxsize=20)
+
 
 
 async def get_redis_client():

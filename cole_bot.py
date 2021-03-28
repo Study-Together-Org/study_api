@@ -90,8 +90,11 @@ async def user_id_to_username(data):
     # get the member from the user_id
     user = guild.get_member(int(data.user_id))
 
-    # return the user's name
-    return user.name
+    # return the user's name or none
+    if user:
+        return user.name
+    else:
+        return "Left server"
 
 
 @my_bot.ipc.route()
