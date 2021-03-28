@@ -41,7 +41,7 @@ cp dev.env.example dev.env
 
 4. Insert fake data
 
-This will run migrations and then insert fake data into the mysql and redis dbs.
+This will run migrations and then insert fake data into the mysql and redis dbs (warning this will reset the dbs).
 ```bash
 # install dependencies
 pipenv install
