@@ -479,7 +479,7 @@ def get_time_interval_from_timepoint(timepoint):
     elif "monthly" in timepoint:
         return "pastMonth"
     elif "all_time" in timepoint:
-        return "all_time"
+        return "allTime"
     else:
         return "error"
 

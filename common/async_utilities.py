@@ -357,23 +357,6 @@ async def get_redis_score(redis_client, sorted_set_name, user_id):
     return round_num(score)
 
 
-async def get_user_stats(
-    redis_client, user_id, timepoint=get_earliest_timepoint(string=True, prefix=True)
-):
-    stats = dict()
-    category_key_names = list(get_rank_categories().values())
-
-    for sorted_set_name in [timepoint] + category_key_names[1:]:
-        stats[sorted_set_name] = {
-            "rank": await get_redis_rank(redis_client, sorted_set_name, user_id),
-            "study_time": await get_redis_score(redis_client, sorted_set_name, user_id),
-        }
-
-    print(stats)
-
-    return stats
-
-
 async def get_time_interval_user_stats(
     redis_client, user_id, timepoint=get_earliest_timepoint(string=True, prefix=True)
 ):
@@ -397,8 +380,9 @@ def get_time_interval_from_timepoint(timepoint):
     elif "monthly" in timepoint:
         return "pastMonth"
     elif "all_time" in timepoint:
-        return "all_time"
+        return "allTime"
     else:
+        print("ERROR get_time_interval_from_timepoint")
         return "error"
 
 

@@ -210,7 +210,7 @@ Example response:
         "time_to_next_role": 44.3
     },
     "stats": {
-        "all_time": {
+        "allTime": {
             "rank": 18463,
             "study_time": 175.7
         },
