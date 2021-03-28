@@ -10,6 +10,12 @@ from common.study import Study
 app = Quart(__name__)
 
 
+time_intervals = ("pastDay", "pastWeek", "pastMonth", "allTime")
+
+async def abort_if_invalid_time_interval(time_interval):
+    if time_interval not in time_intervals:
+        abort(404)
+
 async def abort_if_user_doesnt_exist(user_id):
     study = app.study  # type: ignore
     if not await study.user_exists(user_id):
@@ -58,13 +64,12 @@ async def get_user_timeseries(user_id):
     - user_id (url param): the user's id
     - time_interval (query param): the time interval to query on
     """
-    await abort_if_user_doesnt_exist(user_id)
-
-    study = app.study  # type: ignore
     time_interval = request.args.get("time_interval")
 
-    if not time_interval:
-        abort(404)
+    await abort_if_user_doesnt_exist(user_id)
+    await abort_if_invalid_time_interval(time_interval)
+
+    study = app.study  # type: ignore
 
     timeseries = await study.get_user_timeseries(user_id, time_interval)
     neighbors = await study.get_neighbor_stats(time_interval, user_id)
@@ -93,8 +98,7 @@ async def get_leaderboard():
     except:
         abort(404)
 
-    if not time_interval:
-        abort(404)
+    await abort_if_invalid_time_interval(time_interval)
 
     leaderboard = await study.get_leaderboard(offset, limit, time_interval)
     return leaderboard
