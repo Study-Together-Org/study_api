@@ -118,4 +118,4 @@ async def username_lookup():
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
     asyncio.set_event_loop(loop)
-    app.run(loop=loop, debug=True)
+    app.run(host="0.0.0.0", loop=loop, debug=True)
