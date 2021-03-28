@@ -342,7 +342,7 @@ async def get_redis_rank(redis_client, sorted_set_name, user_id):
 
     # print(user_id)
     if rank is None:
-        await redis_client.zadd(sorted_set_name, {user_id: 0})
+        await redis_client.zadd(sorted_set_name, 0, user_id)
         rank = await redis_client.zrevrank(sorted_set_name, user_id)
 
     return 1 + rank
