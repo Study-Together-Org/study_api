@@ -59,20 +59,34 @@ class MyBot(commands.Bot):
         await ctx.send(f"Simple bot for testing ipc and guild.query_members")
 
 
-my_bot = MyBot(command_prefix="~", intents=discord.Intents.all())
+my_bot = MyBot(command_prefix="!!!!!!!!", intents=discord.Intents.all())
 
 
 @my_bot.ipc.route()
 async def search_users(data):
     # get the guild object
-    guild = my_bot.get_guild(guildID)  
+    guild = my_bot.get_guild(guildID)
 
     # extract the match field from data
     prefix = data.match.lower()
 
+
+    userMatchCount = 0
+
+    def selectUser(user):
+        nonlocal userMatchCount
+
+        # limit the number of matching users
+        res = userMatchCount < 11 and user.name.lower().startswith(prefix)
+
+        if res:
+            userMatchCount += 1
+
+        return res
+
     # get matching users
     matching_users = filter(
-        lambda user: user.name.lower().startswith(prefix), guild.members
+        selectUser, guild.members
     )
 
     # return list of user info objects
