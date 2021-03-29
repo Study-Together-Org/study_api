@@ -112,9 +112,13 @@ async def username_lookup():
     Parameters:
     - match (query param): the prefix to match
     """
+    match = request.args.get("match")
+
+    # abort if no match parameter
+    if match is None:
+        abort(404)
 
     study = app.study  # type: ignore
-    match = request.args.get("match")
     matching_users = await study.username_lookup(match)
     return jsonify(matching_users)
 
