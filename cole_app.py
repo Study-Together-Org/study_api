@@ -94,7 +94,7 @@ async def get_leaderboard():
 
     try:
         offset = int(offset)
-        limit = min(int(limit), 100)
+        limit = min(int(limit), 500)
     except:
         abort(404)
 
