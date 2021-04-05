@@ -123,3 +123,18 @@ async def get_member_count(data):
 if __name__ == "__main__":
     my_bot.ipc.start()  # start the IPC Server
     my_bot.run(os.getenv("bot_token"))
+
+
+@my_bot.ipc.route()
+async def user_id_to_username(data):
+    # get the guild object
+    guild = my_bot.get_guild(guildID)
+
+    # get the member from the user_id
+    user = guild.get_member(int(data.user_id))
+
+    # return the user's name or none
+    if user:
+        return user.joined_at
+    else:
+        return "Left server"

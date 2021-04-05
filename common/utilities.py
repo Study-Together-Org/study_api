@@ -435,8 +435,8 @@ def get_number_of_users(redis_client):
 
 # def get_username_from_user_id(redis_client, user_id):
 #     return redis_client.hget("user_id_to_username", user_id)
-# 
-# 
+#
+#
 # def get_user_id_from_username(redis_client, username):
 #     return redis_client.hget("username_to_user_id", username)
 
@@ -489,8 +489,8 @@ def get_user_timeseries(redis_client, user_id, time_interval):
     time_interval_to_span = {
         "pastDay": 1,
         "pastWeek": 7,
-        "pastMonth": 30,
-        "allTime": 60,
+        "pastMonth": (get_day_start() - get_month_start()).days,
+        "allTime": 500,
     }
 
     span = time_interval_to_span[time_interval]
