@@ -415,12 +415,10 @@ async def get_user_timeseries(redis_client, user_id, time_interval):
     timeseries = list(reversed(timeseries))
 
     if time_interval == "allTime":
-        count = 0
-        while True:
-            if timeseries[0]["study_time"] != 0 or len(timeseries) == 0:
-                break
-            count += 1
-        timeseries = timeseries[count:]
+        c = 0
+        while c < len(timeseries) and timeseries[c]["study_time"] == 0:
+            c += 1
+        timeseries = timeseries[c:]
 
 
 
