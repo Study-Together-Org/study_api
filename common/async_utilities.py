@@ -391,8 +391,8 @@ async def get_user_timeseries(redis_client, user_id, time_interval):
     time_interval_to_span = {
         "pastDay": 1,
         "pastWeek": 7,
-        "pastMonth": 30,
-        "allTime": 60,
+        "pastMonth": (get_day_start() - get_month_start()).days + 1,
+        "allTime": 500,
     }
 
     span = time_interval_to_span[time_interval]
@@ -412,7 +412,17 @@ async def get_user_timeseries(redis_client, user_id, time_interval):
             }
         )
 
-    return list(reversed(timeseries))
+    timeseries = list(reversed(timeseries))
+
+    if time_interval == "allTime":
+        c = 0
+        while c < len(timeseries) and timeseries[c]["study_time"] == 0:
+            c += 1
+        timeseries = timeseries[c:]
+
+
+
+    return timeseries
 
 
 def time_interval_to_timepoint(time_interval):
