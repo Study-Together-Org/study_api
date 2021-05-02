@@ -3,18 +3,21 @@ import asyncio
 
 from discord.ext import ipc
 from quart import Quart, abort, jsonify, request
+from quart_cors import cors
 
 from common import async_utilities
 from common.study import Study
 
 app = Quart(__name__)
-
+app = cors(app, allow_origin="*")
 
 time_intervals = ("pastDay", "pastWeek", "pastMonth", "allTime")
+
 
 async def abort_if_invalid_time_interval(time_interval):
     if time_interval not in time_intervals:
         abort(404)
+
 
 async def abort_if_user_doesnt_exist(user_id):
     study = app.study  # type: ignore
