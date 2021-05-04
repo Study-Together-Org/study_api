@@ -151,23 +151,21 @@ class Study:
         async def get_leaderboard_row(sorted_set_name, neighbor_id):
             # might need to add async
             tasks = [
-                # self.ipc_client.request(
-                #     "user_id_to_username", user_id=neighbor_id
-                # ),
                 utilities.get_redis_rank(
                     self.redis_client, sorted_set_name, neighbor_id
                 ),
                 utilities.get_redis_score(
                     self.redis_client, sorted_set_name, neighbor_id
-                )
+                ),
+                self.ipc_client.request(
+                    "user_id_to_username", user_id=neighbor_id
+                ),
             ]
-
 
             done = await asyncio.gather(*tasks)
 
-            return {"discord_user_id": str(neighbor_id), "username": "Test",
+            return {"discord_user_id": str(neighbor_id), "username": done[2],
                     "rank": done[0], "study_time": done[1]}
-            # "date": sorted_set_name[6:-9], "rank": done[0], "study_time": done[1]}  # type: ignore
 
         tasks = []
         for neighbor_id in id_li:
