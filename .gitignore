@@ -1,1 +1,4 @@
 dev.env
+.idea/
+**/__pycache__
+user.txt*

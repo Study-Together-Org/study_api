@@ -1,15 +1,28 @@
+import quart.flask_patch
 # from flask import Flask, abort, g, jsonify, request
 import asyncio
+import os
 
 from discord.ext import ipc
-from quart import Quart, abort, jsonify, request
+from quart import Quart, abort, jsonify, request, redirect, url_for
 from quart_cors import cors
+from quart_discord import DiscordOAuth2Session, requires_authorization, Unauthorized
 
 from common import async_utilities
 from common.study import Study
 
 app = Quart(__name__)
-app = cors(app, allow_origin="*")
+app = cors(app, allow_origin=["http://localhost:3000", "http://localhost:5000"], allow_credentials=True)
+
+app.secret_key = b"random bytes representing flask secret key"
+os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "true"  # !! Only in development environment.
+
+app.config["DISCORD_CLIENT_ID"] = 838426028791562270  # Discord client ID.
+app.config["DISCORD_CLIENT_SECRET"] = "RIT8Z42HO_18_IoQTenGTLiZX-8elXe6"  # Discord client secret.
+# app.config["DISCORD_REDIRECT_URI"] = "https://dashboard-studytogether.netlify.app"  # URL to your callback endpoint.
+app.config["DISCORD_REDIRECT_URI"] = "http://localhost:5000/callback"  # URL to your callback endpoint.
+
+discord = DiscordOAuth2Session(app)
 
 time_intervals = ("pastDay", "pastWeek", "pastMonth", "allTime")
 
@@ -41,7 +54,59 @@ async def initialize_app_study():
     app.study = Study(redis, engine, ipc_client, ipc_lock)  # type: ignore
 
 
+@app.route("/login/")
+async def login():
+    return await discord.create_session()
+
+
+@app.route("/callback/")
+async def callback():
+    # saves everything in session
+    print("Saving to session")
+    await discord.callback()
+    return redirect("http://localhost:3000/")
+    # return redirect(url_for(".me"))
+
+
+@app.errorhandler(Unauthorized)
+async def redirect_unauthorized(e):
+    return redirect(url_for("login"))
+
+
+@app.route("/me")
+async def me():
+    if await discord.authorized:
+        user = await discord.fetch_user()
+        print(user)
+        return {
+            "id": user.id,
+            "username": user.username,
+            "discriminator": user.discriminator,
+            "avatar_url": user.avatar_url
+        }
+    else:
+        abort(404)
+        # return "Not authorized"
+
+
+    # user = await discord.fetch_user()
+    # return {
+    #     "user": user.name,
+    #     "avatar_url": user.avatar_url
+    # }
+    # return f"""
+    # <html>
+    #     <head>
+    #         <title>{user.name}</title>
+    #     </head>
+    #     <body>
+    #         <img src='{user.avatar_url}' />
+    #     </body>
+    # </html>"""
+
+
 @app.route("/userstats/<user_id>")
+@requires_authorization
 async def get_user_stats(user_id):
     """
     Return a user's study together stats.
@@ -59,6 +124,7 @@ async def get_user_stats(user_id):
 
 
 @app.route("/usertimeseries/<user_id>")
+@requires_authorization
 async def get_user_timeseries(user_id):
     """
     Return a user's timeseries study data and neighbors.
@@ -80,6 +146,7 @@ async def get_user_timeseries(user_id):
 
 
 @app.route("/leaderboard")
+@requires_authorization
 async def get_leaderboard():
     """
     Return a study hours leaderboard
@@ -108,6 +175,7 @@ async def get_leaderboard():
 
 
 @app.route("/users")
+@requires_authorization
 async def username_lookup():
     """
     Return a list of users matching a prefix

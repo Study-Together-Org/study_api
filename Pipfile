@@ -25,6 +25,7 @@ discord-ext-ipc = "*"
 aioredis = "*"
 aiomysql = "*"
 quart-cors = "*"
+quart-discord = "*"
 
 [dev-packages]
 
