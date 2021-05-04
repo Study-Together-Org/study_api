@@ -1,6 +1,7 @@
 import os
 
 from dotenv import load_dotenv
+import asyncio
 from models import User
 from sqlalchemy.future import select
 
@@ -13,7 +14,7 @@ class Study:
     def __init__(self, redis_client, engine, ipc_client, ipc_lock):
         self.role_name_to_obj = utilities.config[
             ("test_" if os.getenv("mode") == "test" else "") + "study_roles"
-        ]
+            ]
         self.redis_client = redis_client
         self.engine = engine
         self.ipc_client = ipc_client
@@ -43,7 +44,6 @@ class Study:
         else:
             return False
 
-
     async def username_lookup(self, match):
         """
         Return a list of users matching a prefix
@@ -53,7 +53,6 @@ class Study:
                 "search_users", match=match
             )
 
-
     async def get_username_from_user_id(self, id):
         """
         Get a users name from their discord user id
@@ -61,7 +60,7 @@ class Study:
         async with self.ipc_lock:
             return await self.ipc_client.request(
                 "user_id_to_username", user_id=id
-               )
+            )
 
     async def get_user_stats(self, id):
         """
@@ -118,7 +117,6 @@ class Study:
         timeseries = await utilities.get_user_timeseries(self.redis_client, id, time_interval)
         return timeseries
 
-
     async def get_neighbor_stats(self, time_interval, user_id):
         """
         Get the neighbors of a user by id for a certain time_interval
@@ -149,22 +147,46 @@ class Study:
         id_li = [
             int(i) for i in await self.redis_client.zrevrange(sorted_set_name, start, end)
         ]
-        id_with_score = []
 
+        async def get_leaderboard_row(sorted_set_name, neighbor_id):
+            # might need to add async
+            tasks = [
+                # self.ipc_client.request(
+                #     "user_id_to_username", user_id=neighbor_id
+                # ),
+                utilities.get_redis_rank(
+                    self.redis_client, sorted_set_name, neighbor_id
+                ),
+                utilities.get_redis_score(
+                    self.redis_client, sorted_set_name, neighbor_id
+                )
+            ]
+
+
+            done = await asyncio.gather(*tasks)
+
+            return {"discord_user_id": str(neighbor_id), "username": "Test",
+                    "rank": done[0], "study_time": done[1]}
+            # "date": sorted_set_name[6:-9], "rank": done[0], "study_time": done[1]}  # type: ignore
+
+        tasks = []
         for neighbor_id in id_li:
-            res = dict()
-            res["discord_user_id"] = str(neighbor_id)
-            async with self.ipc_lock:
-                res["username"] = await self.ipc_client.request(
-                    "user_id_to_username", user_id=neighbor_id
-                   )
-            res["rank"] = await utilities.get_redis_rank(
-                self.redis_client, sorted_set_name, neighbor_id
-            )
-            res["study_time"] = await utilities.get_redis_score(
-                self.redis_client, sorted_set_name, neighbor_id
-            )
-            id_with_score.append(res)
+            tasks.append(get_leaderboard_row(sorted_set_name, neighbor_id))
+            # res = dict()
+            # res["discord_user_id"] = str(neighbor_id)
+            # async with self.ipc_lock:
+            #     res["username"] = await self.ipc_client.request(
+            #         "user_id_to_username", user_id=neighbor_id
+            #     )
+            # res["rank"] = await utilities.get_redis_rank(
+            #     self.redis_client, sorted_set_name, neighbor_id
+            # )
+            # res["study_time"] = await utilities.get_redis_score(
+            #     self.redis_client, sorted_set_name, neighbor_id
+            # )
+            # id_with_score.append(res)
+
+        id_with_score = await asyncio.gather(*tasks)
 
         return id_with_score
 

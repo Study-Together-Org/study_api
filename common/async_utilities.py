@@ -386,6 +386,15 @@ def get_time_interval_from_timepoint(timepoint):
         return "error"
 
 
+async def get_timeseries_timepoint(redis_client, sorted_set_name, user_id):
+    tasks = [
+        get_redis_rank(redis_client, sorted_set_name, user_id),
+        get_redis_score(redis_client, sorted_set_name, user_id),
+    ]
+    done = await asyncio.gather(*tasks)
+
+    return {"date": sorted_set_name[6:-9], "rank": done[0], "study_time": done[1]}  # type: ignore
+
 async def get_user_timeseries(redis_client, user_id, time_interval):
 
     time_interval_to_span = {
@@ -402,15 +411,22 @@ async def get_user_timeseries(redis_client, user_id, time_interval):
         "daily_" + str(timepoint - i * timedelta(days=1)) for i in range(span)
     ]
 
-    timeseries = []
+
+    tasks = []
     for sorted_set_name in timepoints:
-        timeseries.append(
-            {
-                "date": sorted_set_name[6:-9],
-                "rank": await get_redis_rank(redis_client, sorted_set_name, user_id),
-                "study_time": await get_redis_score(redis_client, sorted_set_name, user_id),
-            }
-        )
+        tasks.append(get_timeseries_timepoint(redis_client, sorted_set_name, user_id))
+
+    timeseries = await asyncio.gather(*tasks)
+
+    # timeseries = []
+    # for sorted_set_name in timepoints:
+    #     timeseries.append(
+    #         {
+    #             "date": sorted_set_name[6:-9],
+    #             "rank": await get_redis_rank(redis_client, sorted_set_name, user_id),
+    #             "study_time": await get_redis_score(redis_client, sorted_set_name, user_id),
+    #         }
+    #     )
 
     timeseries = list(reversed(timeseries))
 
@@ -419,8 +435,6 @@ async def get_user_timeseries(redis_client, user_id, time_interval):
         while c < len(timeseries) and timeseries[c]["study_time"] == 0:
             c += 1
         timeseries = timeseries[c:]
-
-
 
     return timeseries
 

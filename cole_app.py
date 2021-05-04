@@ -58,6 +58,11 @@ async def initialize_app_study():
 async def login():
     return await discord.create_session()
 
+@app.route("/logout/")
+@requires_authorization
+async def logout():
+    discord.revoke()
+    return "Logout complete"
 
 @app.route("/callback/")
 async def callback():
@@ -70,16 +75,21 @@ async def callback():
 
 @app.errorhandler(Unauthorized)
 async def redirect_unauthorized(e):
-    return redirect(url_for("login"))
+    abort(404)
+    # return "Unauthorized"
+    # return redirect(url_for("login"))
 
 
 @app.route("/me")
+@requires_authorization
 async def me():
-    if await discord.authorized:
+    valid = await discord.authorized
+
+    if valid:
         user = await discord.fetch_user()
-        print(user)
+        # print(user)
         return {
-            "id": user.id,
+            "id": str(user.id),
             "username": user.username,
             "discriminator": user.discriminator,
             "avatar_url": user.avatar_url
@@ -87,23 +97,6 @@ async def me():
     else:
         abort(404)
         # return "Not authorized"
-
-
-    # user = await discord.fetch_user()
-    # return {
-    #     "user": user.name,
-    #     "avatar_url": user.avatar_url
-    # }
-    # return f"""
-    # <html>
-    #     <head>
-    #         <title>{user.name}</title>
-    #     </head>
-    #     <body>
-    #         <img src='{user.avatar_url}' />
-    #     </body>
-    # </html>"""
-
 
 @app.route("/userstats/<user_id>")
 @requires_authorization
