@@ -27,6 +27,7 @@ discord = DiscordOAuth2Session(app)
 time_intervals = ("pastDay", "pastWeek", "pastMonth", "allTime")
 
 
+
 async def abort_if_invalid_time_interval(time_interval):
     if time_interval not in time_intervals:
         abort(404)
@@ -38,8 +39,10 @@ async def abort_if_user_doesnt_exist(user_id):
         abort(404)
 
 
-@app.before_first_request
+@app.before_serving
 async def initialize_app_study():
+    loop = asyncio.get_event_loop()
+    asyncio.set_event_loop(loop)
     """
     Initialize a study object and attach it to the quart app.
     - redis for connecting to redis
@@ -52,6 +55,7 @@ async def initialize_app_study():
     ipc_client = ipc.Client(secret_key="my_secret_key")
     ipc_lock = asyncio.Lock()
     app.study = Study(redis, engine, ipc_client, ipc_lock)  # type: ignore
+    print("Initialized app study complete")
 
 
 @app.route("/login/")
@@ -80,8 +84,9 @@ async def redirect_unauthorized(e):
     # return redirect(url_for("login"))
 
 
+
+# @requires_authorization
 @app.route("/me")
-@requires_authorization
 async def me():
     valid = await discord.authorized
 
@@ -98,8 +103,8 @@ async def me():
         abort(404)
         # return "Not authorized"
 
+# @requires_authorization
 @app.route("/userstats/<user_id>")
-@requires_authorization
 async def get_user_stats(user_id):
     """
     Return a user's study together stats.
@@ -116,8 +121,8 @@ async def get_user_stats(user_id):
     return {"username": username, "stats": stats, "roleInfo": roleInfo}
 
 
+# @requires_authorization
 @app.route("/usertimeseries/<user_id>")
-@requires_authorization
 async def get_user_timeseries(user_id):
     """
     Return a user's timeseries study data and neighbors.
@@ -138,8 +143,8 @@ async def get_user_timeseries(user_id):
     return {"timeseries": timeseries, "neighbors": neighbors}
 
 
+# @requires_authorization
 @app.route("/leaderboard")
-@requires_authorization
 async def get_leaderboard():
     """
     Return a study hours leaderboard
@@ -167,8 +172,8 @@ async def get_leaderboard():
     return leaderboard
 
 
+# @requires_authorization
 @app.route("/users")
-@requires_authorization
 async def username_lookup():
     """
     Return a list of users matching a prefix
@@ -187,7 +192,8 @@ async def username_lookup():
     return jsonify(matching_users)
 
 
+# doesn't get run with hypercorn
 if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-    asyncio.set_event_loop(loop)
-    app.run(host="0.0.0.0", loop=loop, debug=True)
+    # loop = asyncio.get_event_loop()
+    # asyncio.set_event_loop(loop)
+    app.run(host="0.0.0.0", debug=True)
