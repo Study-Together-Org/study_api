@@ -12,7 +12,7 @@ from common import async_utilities
 from common.study import Study
 
 app = Quart(__name__)
-app = cors(app, allow_origin=["http://localhost:3000", "http://localhost:5000"], allow_credentials=True)
+app = cors(app, allow_origin=["http://localhost:3000", "http://localhost:5000", "https://app.studytogether.com", "https://studytogether.com"], allow_credentials=True)
 
 app.secret_key = b"random bytes representing flask secret key"
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "true"  # !! Only in development environment.
