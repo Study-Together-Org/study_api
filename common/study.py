@@ -162,7 +162,8 @@ class Study:
                 ),
             ]
 
-            done = await asyncio.gather(*tasks)
+            async with self.ipc_lock:
+                done = await asyncio.gather(*tasks)
 
             return {"discord_user_id": str(neighbor_id), "username": done[2],
                     "rank": done[0], "study_time": done[1]}
