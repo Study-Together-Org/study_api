@@ -135,6 +135,24 @@ class Study:
 
         return id_with_score
 
+    async def get_leaderboard_row(self, sorted_set_name, user_id):
+        """
+        Return a leaderboard row dict for a user_id
+        """
+        res = dict()
+        res["discord_user_id"] = str(user_id)
+        async with self.ipc_lock:
+            res["username"] = await self.ipc_client.request(
+                "user_id_to_username", user_id=user_id
+            )
+        res["rank"] = await utilities.get_redis_rank(
+            self.redis_client, sorted_set_name, user_id
+        )
+        res["study_time"] = await utilities.get_redis_score(
+            self.redis_client, sorted_set_name, user_id
+        )
+        return res
+
     async def get_info_from_leaderboard(self, sorted_set_name, start=0, end=-1):
         """
         Get leaderboard information with start and end flags
@@ -148,42 +166,9 @@ class Study:
             int(i) for i in await self.redis_client.zrevrange(sorted_set_name, start, end)
         ]
 
-        async def get_leaderboard_row(sorted_set_name, neighbor_id):
-            # might need to add async
-            tasks = [
-                utilities.get_redis_rank(
-                    self.redis_client, sorted_set_name, neighbor_id
-                ),
-                utilities.get_redis_score(
-                    self.redis_client, sorted_set_name, neighbor_id
-                ),
-                self.ipc_client.request(
-                    "user_id_to_username", user_id=neighbor_id
-                ),
-            ]
-
-            async with self.ipc_lock:
-                done = await asyncio.gather(*tasks)
-
-            return {"discord_user_id": str(neighbor_id), "username": done[2],
-                    "rank": done[0], "study_time": done[1]}
-
         tasks = []
         for neighbor_id in id_li:
-            tasks.append(get_leaderboard_row(sorted_set_name, neighbor_id))
-            # res = dict()
-            # res["discord_user_id"] = str(neighbor_id)
-            # async with self.ipc_lock:
-            #     res["username"] = await self.ipc_client.request(
-            #         "user_id_to_username", user_id=neighbor_id
-            #     )
-            # res["rank"] = await utilities.get_redis_rank(
-            #     self.redis_client, sorted_set_name, neighbor_id
-            # )
-            # res["study_time"] = await utilities.get_redis_score(
-            #     self.redis_client, sorted_set_name, neighbor_id
-            # )
-            # id_with_score.append(res)
+            tasks.append(self.get_leaderboard_row(sorted_set_name, neighbor_id))
 
         id_with_score = await asyncio.gather(*tasks)
 
