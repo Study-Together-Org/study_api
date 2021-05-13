@@ -1,22 +1,20 @@
 import asyncio
-import logging
-import math
 import os
 import random
 import string
-import sys
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 import aioredis
 import dateparser
 import hjson
-import pandas as pd
 from dotenv import load_dotenv
 from faker import Faker
 from sqlalchemy import create_engine
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.future import select
+
+from models import DailyStudyTime
 
 load_dotenv("dev.env")
 
@@ -64,7 +62,6 @@ def get_rank_categories(flatten=False, string=True):
     return rank_categories
 
 
-
 def get_guildID():
     guildID_key_name = ("test_" if os.getenv("mode") == "test" else "") + "guildID"
     guildID = int(os.getenv(guildID_key_name))
@@ -94,6 +91,7 @@ async def get_engine_pool(echo=False):
     )
     # async_session = sessionmaker(async_engine, expire_on_commit=False, class_=AsyncSession)
     return async_engine
+
 
 def get_time():
     now = datetime.utcnow()
@@ -198,8 +196,8 @@ def timedelta_to_hours(td):
 def round_num(num, ndigits=None):
     if not ndigits:
         ndigits_var_name = (
-            "test_" if os.getenv("mode") == "test" else ""
-        ) + "display_num_decimal"
+                               "test_" if os.getenv("mode") == "test" else ""
+                           ) + "display_num_decimal"
         ndigits = int(os.getenv(ndigits_var_name))
 
     return round(num, ndigits=ndigits)
@@ -232,11 +230,14 @@ def generate_random_number(size=1, length=18):
     res = [fake.random_number(digits=length, fix_len=True) for _ in range(size)]
     return res
 
+
 def generate_random_usernames(size=1, length=10):
     return ["".join(random.choice(string.ascii_lowercase) for _ in range(length)) for _ in range(size)]
 
+
 def generate_random_tags(size=1):
     return [f"{random.randint(0, 9999):04d}" for _ in range(size)]
+
 
 def generate_discord_user_id(size=1, length=18):
     res = []
@@ -268,20 +269,20 @@ def generate_username(size=1):
 
 async def get_redis_pool():
     port = os.getenv("redis_port")
-    username=os.getenv("redis_username")
+    username = os.getenv("redis_username")
     password = os.getenv("redis_password")
     host = os.getenv("redis_host")
     db = os.getenv("redis_db_num")
     if username is not None and password is not None:
-        return await aioredis.create_redis_pool(f"redis://{username}:{password}@{host}:{port}/{db}", minsize=10, maxsize=20)
+        return await aioredis.create_redis_pool(f"redis://{username}:{password}@{host}:{port}/{db}", minsize=10,
+                                                maxsize=20)
     else:
         return await aioredis.create_redis_pool(f"redis://@{host}:{port}/{db}", minsize=10, maxsize=20)
 
 
-
 async def get_redis_client():
     port = os.getenv("redis_port")
-    username=os.getenv("redis_username")
+    username = os.getenv("redis_username")
     password = os.getenv("redis_password")
     host = os.getenv("redis_host")
     db = os.getenv("redis_db_num")
@@ -358,7 +359,7 @@ async def get_redis_score(redis_client, sorted_set_name, user_id):
 
 
 async def get_time_interval_user_stats(
-    redis_client, user_id, timepoint=get_earliest_timepoint(string=True, prefix=True)
+        redis_client, user_id, timepoint=get_earliest_timepoint(string=True, prefix=True)
 ):
     stats = dict()
     category_key_names = list(get_rank_categories().values())
@@ -386,17 +387,33 @@ def get_time_interval_from_timepoint(timepoint):
         return "error"
 
 
-async def get_timeseries_timepoint(redis_client, sorted_set_name, user_id):
-    tasks = [
-        get_redis_rank(redis_client, sorted_set_name, user_id),
-        get_redis_score(redis_client, sorted_set_name, user_id),
-    ]
-    done = await asyncio.gather(*tasks)
+async def get_timeseries_timepoint(redis_client, engine, sorted_set_name, user_id):
+    # TODO smartly try sql or redis first based on the time. Right now we always probe redis first
+    if await redis_client.exists(sorted_set_name):
+        tasks = [
+            get_redis_rank(redis_client, sorted_set_name, user_id),
+            get_redis_score(redis_client, sorted_set_name, user_id),
+        ]
+        done = await asyncio.gather(*tasks)
 
-    return {"date": sorted_set_name[6:-9], "rank": done[0], "study_time": done[1]}  # type: ignore
+        return {"date": sorted_set_name[6:-9], "rank": done[0], "study_time": done[1]}  # type: ignore
+    else:
+        async with engine.connect() as connection:
 
-async def get_user_timeseries(redis_client, user_id, time_interval):
+            sorted_set_datetime = datetime.strptime(f"daily_{sorted_set_name}",
+                                                    os.getenv('datetime_format').split('.')[0])
+            stmt = select(DailyStudyTime).filter(
+                DailyStudyTime.timestamp == sorted_set_datetime and DailyStudyTime.user_id == user_id)
 
+            user_sql_obj = (await connection.execute(stmt)).first()
+
+            if user_sql_obj is None:
+                return {"date": sorted_set_name[6:-9], "rank": -1, "study_time": 0}
+            else:
+                return {"date": sorted_set_name[6:-9], "rank": user_sql_obj.rank, "study_time": user_sql_obj.study_time}
+
+
+async def get_user_timeseries(redis_client, engine, user_id, time_interval):
     time_interval_to_span = {
         "pastDay": 1,
         "pastWeek": 7,
@@ -411,10 +428,9 @@ async def get_user_timeseries(redis_client, user_id, time_interval):
         "daily_" + str(timepoint - i * timedelta(days=1)) for i in range(span)
     ]
 
-
     tasks = []
     for sorted_set_name in timepoints:
-        tasks.append(get_timeseries_timepoint(redis_client, sorted_set_name, user_id))
+        tasks.append(get_timeseries_timepoint(redis_client, engine, sorted_set_name, user_id))
 
     timeseries = await asyncio.gather(*tasks)
 
