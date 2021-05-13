@@ -388,13 +388,16 @@ def get_time_interval_from_timepoint(timepoint):
 
 
 async def get_timeseries_timepoint(redis_client, engine, sorted_set_name, user_id):
-    tasks = [
-        get_redis_rank(redis_client, sorted_set_name, user_id),
-        get_redis_score(redis_client, sorted_set_name, user_id),
-    ]
-    done = await asyncio.gather(*tasks)
+    if await redis_client.exists(sorted_set_name):
+        tasks = [
+            get_redis_rank(redis_client, sorted_set_name, user_id),
+            get_redis_score(redis_client, sorted_set_name, user_id),
+        ]
+        done = await asyncio.gather(*tasks)
 
-    return {"date": sorted_set_name[6:-9], "rank": done[0], "study_time": done[1]}  # type: ignore
+        return {"date": sorted_set_name[6:-9], "rank": done[0], "study_time": done[1]}  # type: ignore
+    else:
+        return {"date": sorted_set_name[6:-9], "rank": -1, "study_time": 0}  # type: ignore
 
 
 async def get_user_timeseries(redis_client, engine, user_id, time_interval):
@@ -438,7 +441,7 @@ async def get_user_timeseries(redis_client, engine, user_id, time_interval):
 
     redis_dicts = list(await asyncio.gather(*tasks))
 
-    timeseries = list(reversed(redis_dicts + sql_dicts))
+    timeseries = list(sorted(redis_dicts + sql_dicts, key=lambda row: row["date"]))
 
     if time_interval == "allTime":
         c = 0
