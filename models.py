@@ -1,12 +1,12 @@
 import os
 
 from dotenv import load_dotenv
-from sqlalchemy import Column, ForeignKey, String
-from sqlalchemy.dialects.mysql import BIGINT, DATETIME, INTEGER
+from sqlalchemy import ForeignKey, Column, String
+from sqlalchemy.dialects.mysql import DATETIME, INTEGER, BIGINT, FLOAT
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
-from common import utilities
+import utilities
 
 load_dotenv("dev.env")
 
@@ -16,13 +16,7 @@ DATETIME = DATETIME(fsp=int(os.getenv("time_fsp")))
 Base = declarative_base()
 
 action_categories = [
-    "start channel",
-    "end channel",
-    "start stream",
-    "end stream",
-    "start video",
-    "end video",
-    "start voice",
+    "start channel", "end channel", "start stream", "end stream", "start video", "end video", "start voice",
     "end voice",
     # Currently timer logs are not implemented
     # "start timer", "end timer"
@@ -31,33 +25,64 @@ action_categories = [
 
 class User(Base):
     # Question - How to make it just use the class name instead of hard coding the table name?
-    __tablename__ = "user"
+    __tablename__ = 'user'
     id = Column(BIGINT, primary_key=True)
-    # username = Column(String(32))
-    # tag = Column(String(32))
     longest_streak = Column(INTEGER, server_default="0")
     current_streak = Column(INTEGER, server_default="0")
-    def __repr__(self):
-        return "<User(id='%s', longest='%s', current='%s')>" % (self.id, self.longest_streak, self.current_streak)
 
 
 class Action(Base):
-    __tablename__ = "action"
+    __tablename__ = 'action'
     id = Column(INTEGER, primary_key=True)
-    user_id = Column(
-        BIGINT, ForeignKey("user.id", onupdate="CASCADE"), nullable=False, index=True
-    )
+    user_id = Column(BIGINT, ForeignKey('user.id', onupdate="CASCADE"), nullable=False, index=True)
     category = Column(String(varchar_length), nullable=False)
-    detail = Column(
-        BIGINT
-    )  # Currently, detail is the id of the channel where actions happen
+    detail = Column(BIGINT)  # Currently, detail is the id of the channel where actions happen
     creation_time = Column(DATETIME, default=utilities.get_time)
 
     user = relationship("User", back_populates="action")
 
 
+class DailyStudyTime(Base):
+    __tablename__ = "dailystudytime"
+
+    id = Column(INTEGER, primary_key=True)
+    user_id = Column(BIGINT, ForeignKey('user.id', onupdate="CASCADE"), nullable=False, index=True)
+    timestamp = Column(DATETIME, nullable=False)
+    study_time = Column(FLOAT, nullable=False)
+    rank = Column(INTEGER, nullable=False)
+
+    user = relationship("User", back_populates="dailystudytime")
+
+
+class WeeklyStudyTime(Base):
+    __tablename__ = "weeklystudytime"
+
+    id = Column(INTEGER, primary_key=True)
+    user_id = Column(BIGINT, ForeignKey('user.id', onupdate="CASCADE"), nullable=False, index=True)
+    timestamp = Column(DATETIME, nullable=False)
+    study_time = Column(FLOAT, nullable=False)
+    rank = Column(INTEGER, nullable=False)
+
+    user = relationship("User", back_populates="weeklystudytime")
+
+
+class MonthlyStudyTime(Base):
+    __tablename__ = "monthlystudytime"
+
+    id = Column(INTEGER, primary_key=True)
+    user_id = Column(BIGINT, ForeignKey('user.id', onupdate="CASCADE"), nullable=False, index=True)
+    timestamp = Column(DATETIME, nullable=False)
+    study_time = Column(FLOAT, nullable=False)
+    rank = Column(INTEGER, nullable=False)
+
+    user = relationship("User", back_populates="monthlystudytime")
+
+
 # This must be in global scope for correct models
 User.action = relationship("Action", order_by=Action.id, back_populates="user")
+User.dailystudytime = relationship("DailyStudyTime", order_by=DailyStudyTime.timestamp, back_populates="user")
+User.weeklystudytime = relationship("WeeklyStudyTime", order_by=WeeklyStudyTime.timestamp, back_populates="user")
+User.monthlystudytime = relationship("MonthlyStudyTime", order_by=MonthlyStudyTime.timestamp, back_populates="user")
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     utilities.recreate_db(Base)
