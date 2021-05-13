@@ -114,7 +114,7 @@ class Study:
         """
         Get a user's timeseries data
         """
-        timeseries = await utilities.get_user_timeseries(self.redis_client, id, time_interval)
+        timeseries = await utilities.get_user_timeseries(self.redis_client, self.engine, id, time_interval)
         return timeseries
 
     async def get_neighbor_stats(self, time_interval, user_id):
