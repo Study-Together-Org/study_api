@@ -416,7 +416,7 @@ async def get_user_timeseries(redis_client, engine, user_id, time_interval):
     # query sql dailystudytime table for information
     async with engine.connect() as connection:
         stmt = select(DailyStudyTime).filter(DailyStudyTime.user_id == user_id).filter(
-            DailyStudyTime.timestamp >= datetime.today() - timedelta(days=span))
+            DailyStudyTime.timestamp >= get_day_start() - timedelta(days=span))
 
         # this is a list of tuples of datetime objects
         sql_rows = (await connection.execute(stmt)).all()
@@ -425,7 +425,7 @@ async def get_user_timeseries(redis_client, engine, user_id, time_interval):
             "date": row.timestamp.strftime("%y-%m-%d"),
             "rank": row.rank,
             "study_time": row.study_time
-        } for row in sql_rows if row.timestamp.hour == 5]
+        } for row in sql_rows if row.timestamp.hour == 17]
 
         sql_str_datetimes = set(row.timestamp.strftime(f"daily_{os.getenv('datetime_format').split('.')[0]}") for row in
                                 sql_rows)
