@@ -26,6 +26,7 @@ aioredis = "*"
 aiomysql = "*"
 quart-cors = "*"
 quart-discord = "*"
+locust = "*"
 
 [dev-packages]
 
