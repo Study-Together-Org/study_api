@@ -96,6 +96,21 @@ async def search_users(data):
 
 
 @my_bot.ipc.route()
+async def user_id_to_username(data):
+    # get the guild object
+    guild = my_bot.get_guild(guildID)
+
+    # get the member from the user_id
+    user = guild.get_member(int(data.user_id))
+
+    # return the user's name or none
+    if user:
+        return user.name
+    else:
+        return "Left server"
+
+
+@my_bot.ipc.route()
 async def user_ids_to_usernames(data):
     # get the guild object
     guild = my_bot.get_guild(guildID)
