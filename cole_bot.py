@@ -70,7 +70,6 @@ async def search_users(data):
     # extract the match field from data
     prefix = data.match.lower()
 
-
     userMatchCount = 0
 
     def selectUser(user):
@@ -97,18 +96,20 @@ async def search_users(data):
 
 
 @my_bot.ipc.route()
-async def user_id_to_username(data):
+async def user_ids_to_usernames(data):
     # get the guild object
     guild = my_bot.get_guild(guildID)
 
-    # get the member from the user_id
-    user = guild.get_member(int(data.user_id))
+    # convert from user_ids to names
+    user_names = []
+    for user_id in data.user_ids:
+        # get the member from the user_id
+        user = guild.get_member(int(data.user_id))
 
-    # return the user's name or none
-    if user:
-        return user.name
-    else:
-        return "Left server"
+        # return the user's name or none
+        user_names.append(user.name if user else "Left Server")
+
+    return user_names
 
 
 @my_bot.ipc.route()
