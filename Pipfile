@@ -21,12 +21,13 @@ numpy = "*"
 discord = "*"
 "discord.py" = "*"
 quart = "*"
-discord-ext-ipc = "*"
+discord-ext-ipc = {git = "https://github.com/Ext-Creators/discord-ext-ipc.git",editable = true}
 aioredis = "*"
 aiomysql = "*"
 quart-cors = "*"
 quart-discord = "*"
 locust = "*"
+hypercorn = "*"
 
 [dev-packages]
 
