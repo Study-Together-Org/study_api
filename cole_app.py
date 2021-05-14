@@ -212,10 +212,9 @@ async def username_lookup():
 if __name__ == "__main__":
     if os.getenv("MODE") == "production":
         config = Config()
-        config.debug = debug_mode
         config.certfile = os.getenv("CERTFILE")
         config.keyfile = os.getenv("KEYFILE")
         config.bind = [os.getenv("BIND")]
-        asyncio.run(serve(app, Config()))
+        asyncio.run(serve(app, config), debug=debug_mode)
     else:
         app.run(host="0.0.0.0", debug=debug_mode)
