@@ -1,7 +1,7 @@
 import quart.flask_patch
 # from flask import Flask, abort, g, jsonify, request
 import asyncio
-import os
+import os, ssl
 
 from discord.ext import ipc
 from quart import Quart, abort, jsonify, request, redirect, url_for
@@ -208,6 +208,14 @@ async def username_lookup():
     return jsonify(matching_users)
 
 
+def _exception_handler(loop: asyncio.AbstractEventLoop, context: dict) -> None:
+    exception = context.get("exception")
+    if isinstance(exception, ssl.SSLError):
+        pass  # Handshake failure
+    else:
+        loop.default_exception_handler(context)
+
+
 # doesn't get run with hypercorn
 if __name__ == "__main__":
     if os.getenv("MODE") == "production":
@@ -215,6 +223,12 @@ if __name__ == "__main__":
         config.certfile = os.getenv("CERTFILE")
         config.keyfile = os.getenv("KEYFILE")
         config.bind = [os.getenv("BIND")]
-        asyncio.run(serve(app, config), debug=debug_mode)
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.set_debug(debug_mode)
+        loop.set_exception_handler(_exception_handler)
+
+        loop.run_until_complete(serve(app, config))
     else:
         app.run(host="0.0.0.0", debug=debug_mode)
