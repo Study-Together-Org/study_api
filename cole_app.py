@@ -7,25 +7,29 @@ from discord.ext import ipc
 from quart import Quart, abort, jsonify, request, redirect, url_for
 from quart_cors import cors
 from quart_discord import DiscordOAuth2Session, requires_authorization, Unauthorized
+from dotenv import load_dotenv
 
 from common import async_utilities
 from common.study import Study
+from hypercorn.config import Config
+from hypercorn.asyncio import serve
+
+load_dotenv("dev.env")
 
 app = Quart(__name__)
-app = cors(app, allow_origin=["http://localhost:3000", "http://localhost:5000", "https://app.studytogether.com", "https://studytogether.com"], allow_credentials=True)
+app = cors(app, allow_origin=["http://localhost:3000", "http://localhost:5000", "https://app.studytogether.com",
+                              "https://studytogether.com"], allow_credentials=True)
 
-app.secret_key = b"random bytes representing flask secret key"
-os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "true"  # !! Only in development environment.
+app.secret_key = bytes(os.getenv("APP_SECRET_KEY"), encoding="ascii")
+app.config["DISCORD_CLIENT_ID"] = os.getenv("DISCORD_CLIENT_ID")  # Discord client ID.
+app.config["DISCORD_CLIENT_SECRET"] = os.getenv("DISCORD_CLIENT_SECRET")  # Discord client secret.
+app.config["DISCORD_REDIRECT_URI"] = os.getenv("DISCORD_REDIRECT_URI")  # URL to your callback endpoint.
 
-app.config["DISCORD_CLIENT_ID"] = 838426028791562270  # Discord client ID.
-app.config["DISCORD_CLIENT_SECRET"] = "RIT8Z42HO_18_IoQTenGTLiZX-8elXe6"  # Discord client secret.
-# app.config["DISCORD_REDIRECT_URI"] = "https://dashboard-studytogether.netlify.app"  # URL to your callback endpoint.
-app.config["DISCORD_REDIRECT_URI"] = "http://localhost:5000/callback"  # URL to your callback endpoint.
+debug_mode = True if os.getenv("DEBUG_MODE") == "true" else False
 
 discord = DiscordOAuth2Session(app)
 
 time_intervals = ("pastDay", "pastWeek", "pastMonth", "allTime")
-
 
 
 async def abort_if_invalid_time_interval(time_interval):
@@ -58,15 +62,27 @@ async def initialize_app_study():
     print("Initialized app study complete")
 
 
+@app.after_serving
+async def shutdown_connections():
+    # close redis pool
+    app["study"].redis_client.close()
+    await app["study"].redis_client.wait_closed()
+
+    # close engine
+    await app["study"].engine.dispose()
+
+
 @app.route("/login/")
 async def login():
     return await discord.create_session()
+
 
 @app.route("/logout/")
 @requires_authorization
 async def logout():
     discord.revoke()
     return "Logout complete"
+
 
 @app.route("/callback/")
 async def callback():
@@ -82,7 +98,6 @@ async def redirect_unauthorized(e):
     abort(404)
     # return "Unauthorized"
     # return redirect(url_for("login"))
-
 
 
 # @requires_authorization
@@ -102,6 +117,7 @@ async def me():
     else:
         abort(404)
         # return "Not authorized"
+
 
 # @requires_authorization
 @app.route("/userstats/<user_id>")
@@ -194,6 +210,12 @@ async def username_lookup():
 
 # doesn't get run with hypercorn
 if __name__ == "__main__":
-    # loop = asyncio.get_event_loop()
-    # asyncio.set_event_loop(loop)
-    app.run(host="0.0.0.0", debug=True)
+    if os.getenv("MODE") == "production":
+        config = Config()
+        config.debug = debug_mode
+        config.certfile = os.getenv("CERTFILE")
+        config.keyfile = os.getenv("KEYFILE")
+        config.bind = [os.getenv("BIND")]
+        asyncio.run(serve(app, Config()))
+    else:
+        app.run(host="0.0.0.0", debug=debug_mode)
