@@ -163,7 +163,7 @@ class Study:
 
         async with self.ipc_lock:
             usernames = await self.ipc_client.request(
-                "users_id_to_usernames", user_ids=[id_li]
+                "user_ids_to_usernames", user_ids=id_li
             )
 
         tasks = []

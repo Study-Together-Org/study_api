@@ -65,11 +65,11 @@ async def initialize_app_study():
 @app.after_serving
 async def shutdown_connections():
     # close redis pool
-    app["study"].redis_client.close()
-    await app["study"].redis_client.wait_closed()
+    app.study.redis_client.close()
+    await app.study.redis_client.wait_closed()
 
     # close engine
-    await app["study"].engine.dispose()
+    await app.study.engine.dispose()
 
 
 @app.route("/login/")
