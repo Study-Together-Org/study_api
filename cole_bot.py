@@ -5,6 +5,23 @@ import pandas as pd
 from discord.ext import commands, ipc
 from dotenv import load_dotenv
 
+import logging
+
+
+discordlogger = logging.getLogger('discord')
+discordlogger.setLevel(logging.ERROR)
+handler = logging.FileHandler(filename='discord_bot.log', encoding='utf-8', mode='w')
+handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+discordlogger.addHandler(handler)
+
+print(discord.ext.ipc.server.__name__)
+
+ipclogger = logging.getLogger('discord.ext.ipc.server')
+ipclogger.setLevel(logging.DEBUG)
+handler = logging.FileHandler(filename='ipc.log', encoding='utf-8', mode='w')
+handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+ipclogger.addHandler(handler)
+
 load_dotenv("dev.env")
 
 guildID_key_name = ("test_" if os.getenv("mode") == "test" else "") + "guildID"
@@ -21,7 +38,7 @@ class MyBot(commands.Bot):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.ipc = ipc.Server(self, secret_key="my_secret_key")  # create our IPC Server
+        self.ipc = ipc.Server(self, secret_key="my_secret_key", do_multicast=False, port=8765)  # create our IPC Server
 
     async def on_ready(self):
         """Called upon the READY event"""
@@ -70,7 +87,6 @@ async def search_users(data):
     # extract the match field from data
     prefix = data.match.lower()
 
-
     userMatchCount = 0
 
     def selectUser(user):
@@ -109,6 +125,23 @@ async def user_id_to_username(data):
         return user.name
     else:
         return "Left server"
+
+
+@my_bot.ipc.route()
+async def user_ids_to_usernames(data):
+    # get the guild object
+    guild = my_bot.get_guild(guildID)
+
+    # convert from user_ids to names
+    user_names = []
+    for user_id in data.user_ids:
+        # get the member from the user_id
+        user = guild.get_member(int(user_id))
+
+        # return the user's name or none
+        user_names.append(user.name if user else "Left Server")
+
+    return user_names
 
 
 @my_bot.ipc.route()

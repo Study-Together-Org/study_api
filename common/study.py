@@ -135,16 +135,11 @@ class Study:
 
         return id_with_score
 
-    async def get_leaderboard_row(self, sorted_set_name, user_id):
+    async def get_user_rank_and_score(self, sorted_set_name, user_id):
         """
         Return a leaderboard row dict for a user_id
         """
         res = dict()
-        res["discord_user_id"] = str(user_id)
-        async with self.ipc_lock:
-            res["username"] = await self.ipc_client.request(
-                "user_id_to_username", user_id=user_id
-            )
         res["rank"] = await utilities.get_redis_rank(
             self.redis_client, sorted_set_name, user_id
         )
@@ -166,13 +161,21 @@ class Study:
             int(i) for i in await self.redis_client.zrevrange(sorted_set_name, start, end)
         ]
 
+        async with self.ipc_lock:
+            usernames = await self.ipc_client.request(
+                "user_ids_to_usernames", user_ids=id_li
+            )
+
         tasks = []
         for neighbor_id in id_li:
-            tasks.append(self.get_leaderboard_row(sorted_set_name, neighbor_id))
+            tasks.append(self.get_user_rank_and_score(sorted_set_name, neighbor_id))
 
-        id_with_score = await asyncio.gather(*tasks)
+        user_ranks_and_study_times = await asyncio.gather(*tasks)
 
-        return id_with_score
+        return [
+            {"discord_user_id": str(user_id), "username": username, "rank": stats["rank"],
+             "study_time": stats["study_time"]}
+            for user_id, username, stats in zip(id_li, usernames, user_ranks_and_study_times)]
 
     async def get_leaderboard(self, offset, limit, time_interval):
         """

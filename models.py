@@ -6,7 +6,7 @@ from sqlalchemy.dialects.mysql import DATETIME, INTEGER, BIGINT, FLOAT
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
-import utilities
+from common import utilities
 
 load_dotenv("dev.env")
 

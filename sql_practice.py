@@ -459,3 +459,14 @@ def time_interval_to_timepoint(time_interval):
         "pastMonth": f"monthly_{get_month()}",
         "allTime": "all_time",
     }[time_interval]
+
+
+async def main():
+    redis = None
+    engine = await get_engine_pool()
+    timeseries = await get_user_timeseries(redis, engine, 683274515798949889, "pastMonth")
+    print(timeseries)
+    await engine.dispose()
+
+
+asyncio.run(main())

@@ -1,31 +1,42 @@
-import quart.flask_patch
 # from flask import Flask, abort, g, jsonify, request
 import asyncio
 import os
+import ssl
+import logging
 
 from discord.ext import ipc
-from quart import Quart, abort, jsonify, request, redirect, url_for
+from dotenv import load_dotenv
+from hypercorn.asyncio import serve
+from hypercorn.config import Config
+from quart import Quart, abort, jsonify, request, redirect
 from quart_cors import cors
 from quart_discord import DiscordOAuth2Session, requires_authorization, Unauthorized
 
 from common import async_utilities
 from common.study import Study
 
+ipclogger = logging.getLogger('discord.ext.ipc.client')
+ipclogger.setLevel(logging.DEBUG)
+handler = logging.FileHandler(filename='ipc_client.log', encoding='utf-8', mode='w')
+handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+ipclogger.addHandler(handler)
+
+load_dotenv("dev.env")
+
 app = Quart(__name__)
-app = cors(app, allow_origin=["http://localhost:3000", "http://localhost:5000", "https://app.studytogether.com", "https://studytogether.com"], allow_credentials=True)
+app = cors(app, allow_origin=["http://localhost:3000", "http://localhost:5000", "https://app.studytogether.com",
+                              "https://studytogether.com"], allow_credentials=True)
 
-app.secret_key = b"random bytes representing flask secret key"
-os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "true"  # !! Only in development environment.
+app.secret_key = bytes(os.getenv("APP_SECRET_KEY"), encoding="ascii")
+app.config["DISCORD_CLIENT_ID"] = os.getenv("DISCORD_CLIENT_ID")  # Discord client ID.
+app.config["DISCORD_CLIENT_SECRET"] = os.getenv("DISCORD_CLIENT_SECRET")  # Discord client secret.
+app.config["DISCORD_REDIRECT_URI"] = os.getenv("DISCORD_REDIRECT_URI")  # URL to your callback endpoint.
 
-app.config["DISCORD_CLIENT_ID"] = 838426028791562270  # Discord client ID.
-app.config["DISCORD_CLIENT_SECRET"] = "RIT8Z42HO_18_IoQTenGTLiZX-8elXe6"  # Discord client secret.
-# app.config["DISCORD_REDIRECT_URI"] = "https://dashboard-studytogether.netlify.app"  # URL to your callback endpoint.
-app.config["DISCORD_REDIRECT_URI"] = "http://localhost:5000/callback"  # URL to your callback endpoint.
+debug_mode = True if os.getenv("DEBUG_MODE") == "true" else False
 
 discord = DiscordOAuth2Session(app)
 
 time_intervals = ("pastDay", "pastWeek", "pastMonth", "allTime")
-
 
 
 async def abort_if_invalid_time_interval(time_interval):
@@ -52,21 +63,33 @@ async def initialize_app_study():
     """
     redis = await async_utilities.get_redis_pool()
     engine = await async_utilities.get_engine_pool()
-    ipc_client = ipc.Client(secret_key="my_secret_key")
+    ipc_client = ipc.Client(secret_key="my_secret_key", port=8765)
     ipc_lock = asyncio.Lock()
     app.study = Study(redis, engine, ipc_client, ipc_lock)  # type: ignore
     print("Initialized app study complete")
+
+
+@app.after_serving
+async def shutdown_connections():
+    # close redis pool
+    app.study.redis_client.close()
+    await app.study.redis_client.wait_closed()
+
+    # close engine
+    await app.study.engine.dispose()
 
 
 @app.route("/login/")
 async def login():
     return await discord.create_session()
 
+
 @app.route("/logout/")
 @requires_authorization
 async def logout():
     discord.revoke()
     return "Logout complete"
+
 
 @app.route("/callback/")
 async def callback():
@@ -82,7 +105,6 @@ async def redirect_unauthorized(e):
     abort(404)
     # return "Unauthorized"
     # return redirect(url_for("login"))
-
 
 
 # @requires_authorization
@@ -102,6 +124,7 @@ async def me():
     else:
         abort(404)
         # return "Not authorized"
+
 
 # @requires_authorization
 @app.route("/userstats/<user_id>")
@@ -192,8 +215,27 @@ async def username_lookup():
     return jsonify(matching_users)
 
 
+def _exception_handler(loop: asyncio.AbstractEventLoop, context: dict) -> None:
+    exception = context.get("exception")
+    if isinstance(exception, ssl.SSLError):
+        pass  # Handshake failure
+    else:
+        loop.default_exception_handler(context)
+
+
 # doesn't get run with hypercorn
 if __name__ == "__main__":
-    # loop = asyncio.get_event_loop()
-    # asyncio.set_event_loop(loop)
-    app.run(host="0.0.0.0", debug=True)
+    if os.getenv("MODE") == "production":
+        config = Config()
+        config.certfile = os.getenv("CERTFILE")
+        config.keyfile = os.getenv("KEYFILE")
+        config.bind = [os.getenv("BIND")]
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.set_debug(debug_mode)
+        loop.set_exception_handler(_exception_handler)
+
+        loop.run_until_complete(serve(app, config))
+    else:
+        app.run(host="0.0.0.0", debug=debug_mode)
