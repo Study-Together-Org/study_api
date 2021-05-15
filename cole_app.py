@@ -1,10 +1,10 @@
 # from flask import Flask, abort, g, jsonify, request
 import asyncio
+import logging
 import os
 import ssl
-import logging
 
-from discord.ext import ipc
+import discord
 from dotenv import load_dotenv
 from hypercorn.asyncio import serve
 from hypercorn.config import Config
@@ -12,14 +12,21 @@ from quart import Quart, abort, jsonify, request, redirect
 from quart_cors import cors
 from quart_discord import DiscordOAuth2Session, requires_authorization, Unauthorized
 
+from cole_bot import MyBot
 from common import async_utilities
 from common.study import Study
 
-ipclogger = logging.getLogger('discord.ext.ipc.client')
-ipclogger.setLevel(logging.DEBUG)
-handler = logging.FileHandler(filename='ipc_client.log', encoding='utf-8', mode='w')
+# ipclogger = logging.getLogger('discord.ext.ipc.client')
+# ipclogger.setLevel(logging.DEBUG)
+# handler = logging.FileHandler(filename='ipc_client.log', encoding='utf-8', mode='w')
+# handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+# ipclogger.addHandler(handler)
+
+discordlogger = logging.getLogger('discord')
+discordlogger.setLevel(logging.WARN)
+handler = logging.FileHandler(filename='discord_bot.log', encoding='utf-8', mode='w')
 handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
-ipclogger.addHandler(handler)
+discordlogger.addHandler(handler)
 
 load_dotenv("dev.env")
 
@@ -34,7 +41,7 @@ app.config["DISCORD_REDIRECT_URI"] = os.getenv("DISCORD_REDIRECT_URI")  # URL to
 
 debug_mode = True if os.getenv("DEBUG_MODE") == "true" else False
 
-discord = DiscordOAuth2Session(app)
+discord_oauth = DiscordOAuth2Session(app)
 
 time_intervals = ("pastDay", "pastWeek", "pastMonth", "allTime")
 
@@ -58,14 +65,14 @@ async def initialize_app_study():
     Initialize a study object and attach it to the quart app.
     - redis for connecting to redis
     - engine for connecting to sql
-    - ipc_client for communicating with discord bot
-    - ipc_lock for ensuring that only one request is made on ipc_client at a time
+    - my_bot for interacting with discord things
     """
     redis = await async_utilities.get_redis_pool()
     engine = await async_utilities.get_engine_pool()
-    ipc_client = ipc.Client(secret_key="my_secret_key", port=8765)
-    ipc_lock = asyncio.Lock()
-    app.study = Study(redis, engine, ipc_client, ipc_lock)  # type: ignore
+    # bot = ipc.Client(secret_key="my_secret_key", port=8765)
+    my_bot = MyBot(command_prefix=None, intents=discord.Intents.all())
+    await my_bot.wait_until_ready()
+    app.study = Study(redis, engine, my_bot)  # type: ignore
     print("Initialized app study complete")
 
 
@@ -81,13 +88,13 @@ async def shutdown_connections():
 
 @app.route("/login/")
 async def login():
-    return await discord.create_session()
+    return await discord_oauth.create_session()
 
 
 @app.route("/logout/")
 @requires_authorization
 async def logout():
-    discord.revoke()
+    discord_oauth.revoke()
     return "Logout complete"
 
 
@@ -95,7 +102,7 @@ async def logout():
 async def callback():
     # saves everything in session
     print("Saving to session")
-    await discord.callback()
+    await discord_oauth.callback()
     return redirect("http://localhost:3000/")
     # return redirect(url_for(".me"))
 
@@ -110,10 +117,10 @@ async def redirect_unauthorized(e):
 # @requires_authorization
 @app.route("/me")
 async def me():
-    valid = await discord.authorized
+    valid = await discord_oauth.authorized
 
     if valid:
-        user = await discord.fetch_user()
+        user = await discord_oauth.fetch_user()
         # print(user)
         return {
             "id": str(user.id),
@@ -235,7 +242,6 @@ if __name__ == "__main__":
         asyncio.set_event_loop(loop)
         loop.set_debug(debug_mode)
         loop.set_exception_handler(_exception_handler)
-
         loop.run_until_complete(serve(app, config))
     else:
         app.run(host="0.0.0.0", debug=debug_mode)
