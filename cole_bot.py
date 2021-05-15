@@ -38,7 +38,7 @@ class MyBot(commands.Bot):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.ipc = ipc.Server(self, secret_key="my_secret_key")  # create our IPC Server
+        self.ipc = ipc.Server(self, secret_key="my_secret_key", do_multicast=False, port=8765)  # create our IPC Server
 
     async def on_ready(self):
         """Called upon the READY event"""

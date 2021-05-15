@@ -63,7 +63,7 @@ async def initialize_app_study():
     """
     redis = await async_utilities.get_redis_pool()
     engine = await async_utilities.get_engine_pool()
-    ipc_client = ipc.Client(secret_key="my_secret_key")
+    ipc_client = ipc.Client(secret_key="my_secret_key", port=8765)
     ipc_lock = asyncio.Lock()
     app.study = Study(redis, engine, ipc_client, ipc_lock)  # type: ignore
     print("Initialized app study complete")
