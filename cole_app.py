@@ -71,6 +71,8 @@ async def initialize_app_study():
     engine = await async_utilities.get_engine_pool()
     # bot = ipc.Client(secret_key="my_secret_key", port=8765)
     my_bot = MyBot(command_prefix=None, intents=discord.Intents.all())
+    loop.create_task(my_bot.start(os.getenv("bot_token")))
+    print("Starting bot")
     await my_bot.wait_until_ready()
     app.study = Study(redis, engine, my_bot)  # type: ignore
     print("Initialized app study complete")
