@@ -98,5 +98,5 @@ class MyBot(commands.Bot):
 
 
 if __name__ == "__main__":
-    my_bot = MyBot(command_prefix=None, intents=discord.Intents.all())
+    my_bot = MyBot(command_prefix="random_word", intents=discord.Intents.all())
     my_bot.run(os.getenv("bot_token"))
