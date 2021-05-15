@@ -173,7 +173,8 @@ class Study:
         user_ranks_and_study_times = await asyncio.gather(*tasks)
 
         return [
-            {"discord_user_id": str(user_id), "username": username, "rank": stats["rank"], "study_time": stats["study_time"]}
+            {"discord_user_id": str(user_id), "username": username, "rank": stats["rank"],
+             "study_time": stats["study_time"]}
             for user_id, username, stats in zip(id_li, usernames, user_ranks_and_study_times)]
 
     async def get_leaderboard(self, offset, limit, time_interval):

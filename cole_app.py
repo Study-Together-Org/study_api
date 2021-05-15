@@ -1,18 +1,25 @@
-import quart.flask_patch
 # from flask import Flask, abort, g, jsonify, request
 import asyncio
-import os, ssl
+import os
+import ssl
+import logging
 
 from discord.ext import ipc
-from quart import Quart, abort, jsonify, request, redirect, url_for
+from dotenv import load_dotenv
+from hypercorn.asyncio import serve
+from hypercorn.config import Config
+from quart import Quart, abort, jsonify, request, redirect
 from quart_cors import cors
 from quart_discord import DiscordOAuth2Session, requires_authorization, Unauthorized
-from dotenv import load_dotenv
 
 from common import async_utilities
 from common.study import Study
-from hypercorn.config import Config
-from hypercorn.asyncio import serve
+
+ipclogger = logging.getLogger('discord.ext.ipc.client')
+ipclogger.setLevel(logging.DEBUG)
+handler = logging.FileHandler(filename='ipc_client.log', encoding='utf-8', mode='w')
+handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+ipclogger.addHandler(handler)
 
 load_dotenv("dev.env")
 
