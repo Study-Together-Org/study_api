@@ -11,14 +11,13 @@ load_dotenv("dev.env")
 
 
 class Study:
-    def __init__(self, redis_client, engine, ipc_client, ipc_lock):
+    def __init__(self, redis_client, engine, discord_bot):
         self.role_name_to_obj = utilities.config[
             ("test_" if os.getenv("mode") == "test" else "") + "study_roles"
             ]
         self.redis_client = redis_client
         self.engine = engine
-        self.ipc_client = ipc_client
-        self.ipc_lock = ipc_lock
+        self.discord_bot = discord_bot
 
     async def user_exists(self, discord_user_id):
         """
@@ -48,31 +47,25 @@ class Study:
         """
         Return a list of users matching a prefix
         """
-        async with self.ipc_lock:
-            return await self.ipc_client.request(
-                "search_users", match=match
-            )
+        return await self.discord_bot.search_users(match)
 
-    async def get_username_from_user_id(self, id):
+    async def get_username_from_user_id(self, user_id):
         """
         Get a users name from their discord user id
         """
-        async with self.ipc_lock:
-            return await self.ipc_client.request(
-                "user_id_to_username", user_id=id
-            )
+        return await self.discord_bot.user_id_to_username(user_id)
 
-    async def get_user_stats(self, id):
+    async def get_user_stats(self, user_id):
         """
         Return a user's stats from their id
         """
         timepoint = f"daily_{utilities.get_day_start()}"
-        stmt = select(User).filter(User.id == int(id))
+        stmt = select(User).filter(User.id == int(user_id))
         async with self.engine.connect() as connection:
             user_sql_obj = (await connection.execute(stmt)).first()
 
         stats = await utilities.get_time_interval_user_stats(
-            self.redis_client, id, timepoint=timepoint
+            self.redis_client, user_id, timepoint=timepoint
         )
 
         stats["averagePerDay"] = utilities.round_num(
@@ -161,10 +154,7 @@ class Study:
             int(i) for i in await self.redis_client.zrevrange(sorted_set_name, start, end)
         ]
 
-        async with self.ipc_lock:
-            usernames = await self.ipc_client.request(
-                "user_ids_to_usernames", user_ids=id_li
-            )
+        usernames = await self.discord_bot.user_ids_to_usernames(id_li)
 
         tasks = []
         for neighbor_id in id_li:
@@ -189,7 +179,6 @@ class Study:
 
         leaderboard = await self.get_info_from_leaderboard(sorted_set_name, start, end)
 
-        async with self.ipc_lock:
-            num_users = await self.ipc_client.request("get_member_count")
+        num_users = await self.discord_bot.get_member_count()
 
         return {"leaderboard": leaderboard, "num_users": num_users}
