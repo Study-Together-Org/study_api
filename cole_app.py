@@ -240,6 +240,7 @@ if __name__ == "__main__":
         config.certfile = os.getenv("CERTFILE")
         config.keyfile = os.getenv("KEYFILE")
         config.bind = [os.getenv("BIND")]
+        config.accesslog = "api_access.log"
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
