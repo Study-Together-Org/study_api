@@ -1,5 +1,5 @@
-# from flask import Flask, abort, g, jsonify, request
 import asyncio
+import uvloop
 import logging
 import os
 import ssl
@@ -15,6 +15,7 @@ from quart_discord import DiscordOAuth2Session, requires_authorization, Unauthor
 from cole_bot import MyBot
 from common import async_utilities
 from common.study import Study
+asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 # ipclogger = logging.getLogger('discord.ext.ipc.client')
 # ipclogger.setLevel(logging.DEBUG)
