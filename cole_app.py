@@ -33,7 +33,7 @@ load_dotenv("dev.env")
 
 app = Quart(__name__)
 app = cors(app, allow_origin=["http://localhost:3000", "http://localhost:5000", "https://app.studytogether.com",
-                              "https://studytogether.com", "https://www.studytogether.com"], allow_credentials=True)
+    "https://studytogether.com", "https://www.studytogether.com", "https://app.dev.studytogether.com"], allow_credentials=True)
 
 app.secret_key = bytes(os.getenv("APP_SECRET_KEY"), encoding="ascii")
 app.config["DISCORD_CLIENT_ID"] = os.getenv("DISCORD_CLIENT_ID")  # Discord client ID.
