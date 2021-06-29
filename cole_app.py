@@ -1,5 +1,5 @@
-# from flask import Flask, abort, g, jsonify, request
 import asyncio
+import uvloop
 import logging
 import os
 import ssl
@@ -15,6 +15,7 @@ from quart_discord import DiscordOAuth2Session, requires_authorization, Unauthor
 from cole_bot import MyBot
 from common import async_utilities
 from common.study import Study
+asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 # ipclogger = logging.getLogger('discord.ext.ipc.client')
 # ipclogger.setLevel(logging.DEBUG)
@@ -32,7 +33,7 @@ load_dotenv("dev.env")
 
 app = Quart(__name__)
 app = cors(app, allow_origin=["http://localhost:3000", "http://localhost:5000", "https://app.studytogether.com",
-                              "https://studytogether.com", "https://www.studytogether.com"], allow_credentials=True)
+    "https://studytogether.com", "https://www.studytogether.com", "https://app.dev.studytogether.com"], allow_credentials=True)
 
 app.secret_key = bytes(os.getenv("APP_SECRET_KEY"), encoding="ascii")
 app.config["DISCORD_CLIENT_ID"] = os.getenv("DISCORD_CLIENT_ID")  # Discord client ID.
@@ -239,6 +240,7 @@ if __name__ == "__main__":
         config.certfile = os.getenv("CERTFILE")
         config.keyfile = os.getenv("KEYFILE")
         config.bind = [os.getenv("BIND")]
+        config.accesslog = "api_access.log"
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)

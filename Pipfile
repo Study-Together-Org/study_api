@@ -28,6 +28,7 @@ quart-cors = "*"
 quart-discord = "*"
 locust = "*"
 hypercorn = "*"
+uvloop = "*"
 
 [dev-packages]
 
