@@ -129,7 +129,8 @@ async def me():
             "id": str(user.id),
             "username": user.username,
             "discriminator": user.discriminator,
-            "avatar_url": user.avatar_url
+            "avatar_url": user.avatar_url,
+            "email": user.email
         }
     else:
         abort(404)
